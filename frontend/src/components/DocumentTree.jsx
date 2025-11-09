@@ -1,10 +1,31 @@
 import React, { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { ChevronRight, ChevronDown, MoreVertical, Plus, Edit, Trash2, FileText } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 const TreeNode = ({ node, activeDocId, onSelect, onCreateChild, onRename, onDelete, level = 0 }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [showMenu, setShowMenu] = useState(false);
   const [isRenaming, setIsRenaming] = useState(false);
   const [newTitle, setNewTitle] = useState(node.title);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   const hasChildren = node.children && node.children.length > 0;
   const isActive = activeDocId === node.id;
@@ -14,7 +35,6 @@ const TreeNode = ({ node, activeDocId, onSelect, onCreateChild, onRename, onDele
       await onRename(node.id, newTitle);
     }
     setIsRenaming(false);
-    setShowMenu(false);
   };
 
   const handleKeyPress = (e) => {
@@ -26,93 +46,104 @@ const TreeNode = ({ node, activeDocId, onSelect, onCreateChild, onRename, onDele
     }
   };
 
+  const handleDelete = () => {
+    onDelete(node.id);
+    setShowDeleteDialog(false);
+  };
+
   return (
     <div className="select-none">
       <div
-        className={`flex items-center py-1 px-2 hover:bg-gray-100 rounded cursor-pointer relative ${
-          isActive ? 'bg-blue-100' : ''
-        }`}
-        style={{ paddingLeft: `${level * 20 + 8}px` }}
+        className={cn(
+          "flex items-center py-1.5 px-2 hover:bg-accent rounded-md cursor-pointer group",
+          isActive && "bg-accent"
+        )}
+        style={{ paddingLeft: `${level * 16 + 8}px` }}
       >
-        {hasChildren && (
-          <span
-            className="mr-1 cursor-pointer"
-            onClick={(e) => {
-              e.stopPropagation();
-              setIsCollapsed(!isCollapsed);
-            }}
-          >
-            {isCollapsed ? '▶' : '▼'}
-          </span>
-        )}
-        {!hasChildren && <span className="mr-1 w-4"></span>}
-
-        {isRenaming ? (
-          <input
-            type="text"
-            className="flex-1 px-1 border border-blue-500 rounded"
-            value={newTitle}
-            onChange={(e) => setNewTitle(e.target.value)}
-            onBlur={handleRename}
-            onKeyDown={handleKeyPress}
-            autoFocus
-            onClick={(e) => e.stopPropagation()}
-          />
-        ) : (
-          <span
-            className="flex-1"
-            onClick={() => onSelect(node.id)}
-          >
-            {node.title}
-          </span>
-        )}
-
-        <button
-          className="ml-2 text-gray-500 hover:text-gray-700"
-          onClick={(e) => {
-            e.stopPropagation();
-            setShowMenu(!showMenu);
-          }}
-        >
-          ⋮
-        </button>
-
-        {showMenu && (
-          <div className="absolute right-0 top-8 bg-white border border-gray-300 rounded shadow-lg z-10 min-w-[150px]">
+        <div className="flex items-center flex-1 min-w-0">
+          {hasChildren ? (
             <button
-              className="block w-full text-left px-4 py-2 hover:bg-gray-100"
+              className="mr-1 p-0.5 hover:bg-accent rounded"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsCollapsed(!isCollapsed);
+              }}
+            >
+              {isCollapsed ? (
+                <ChevronRight className="h-4 w-4" />
+              ) : (
+                <ChevronDown className="h-4 w-4" />
+              )}
+            </button>
+          ) : (
+            <span className="mr-1 w-5"></span>
+          )}
+
+          {isRenaming ? (
+            <Input
+              type="text"
+              className="h-7 flex-1"
+              value={newTitle}
+              onChange={(e) => setNewTitle(e.target.value)}
+              onBlur={handleRename}
+              onKeyDown={handleKeyPress}
+              autoFocus
+              onClick={(e) => e.stopPropagation()}
+            />
+          ) : (
+            <div
+              className="flex items-center flex-1 min-w-0 gap-2"
+              onClick={() => onSelect(node.id)}
+            >
+              <FileText className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+              <span className="truncate text-sm">{node.title}</span>
+            </div>
+          )}
+        </div>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 ml-1 opacity-0 group-hover:opacity-100"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <MoreVertical className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem
               onClick={(e) => {
                 e.stopPropagation();
                 onCreateChild(node.id);
-                setShowMenu(false);
               }}
             >
+              <Plus className="mr-2 h-4 w-4" />
               Add Child
-            </button>
-            <button
-              className="block w-full text-left px-4 py-2 hover:bg-gray-100"
+            </DropdownMenuItem>
+            <DropdownMenuItem
               onClick={(e) => {
                 e.stopPropagation();
                 setIsRenaming(true);
-                setShowMenu(false);
               }}
             >
+              <Edit className="mr-2 h-4 w-4" />
               Rename
-            </button>
-            <button
-              className="block w-full text-left px-4 py-2 hover:bg-gray-100 text-red-600"
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              className="text-destructive"
               onClick={(e) => {
                 e.stopPropagation();
-                if (confirm(`Delete "${node.title}"?`)) {
-                  onDelete(node.id);
-                }
-                setShowMenu(false);
+                setShowDeleteDialog(true);
               }}
             >
+              <Trash2 className="mr-2 h-4 w-4" />
               Delete
-            </button>
-          </div>
-        )}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {!isCollapsed && hasChildren && (
@@ -131,20 +162,38 @@ const TreeNode = ({ node, activeDocId, onSelect, onCreateChild, onRename, onDele
           ))}
         </div>
       )}
+
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete document</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{node.title}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
 
 const DocumentTree = ({ tree, activeDocId, onSelect, onCreateRoot, onCreateChild, onRename, onDelete }) => {
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full flex flex-col bg-background">
       <div className="p-4 border-b">
-        <button
-          className="w-full bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded"
+        <Button
+          className="w-full"
           onClick={onCreateRoot}
         >
-          + New Document
-        </button>
+          <Plus className="mr-2 h-4 w-4" />
+          New Document
+        </Button>
       </div>
 
       <div className="flex-1 overflow-y-auto p-2">
@@ -161,8 +210,8 @@ const DocumentTree = ({ tree, activeDocId, onSelect, onCreateRoot, onCreateChild
             />
           ))
         ) : (
-          <div className="text-center text-gray-500 mt-8">
-            No documents yet. Create one to get started!
+          <div className="text-center text-muted-foreground mt-8 px-4">
+            <p className="text-sm">No documents yet. Create one to get started!</p>
           </div>
         )}
       </div>
