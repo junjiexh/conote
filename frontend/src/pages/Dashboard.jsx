@@ -113,6 +113,9 @@ const Dashboard = () => {
     try {
       await documentAPI.update(id, title, content);
       await loadDocumentTree();
+      if (activeDocId === id) {
+        setActiveDocument((prev) => ({...prev, title, content}))
+      }
     } catch (error) {
       console.error('Error saving document:', error);
       throw error;
