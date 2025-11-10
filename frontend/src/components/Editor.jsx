@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { FileText, Clock } from 'lucide-react';
+import LexicalEditor from './LexicalEditor';
 
 const Editor = ({ document, onSave }) => {
   const [title, setTitle] = useState('');
@@ -100,10 +100,10 @@ const Editor = ({ document, onSave }) => {
       </div>
 
       <div className="flex-1 overflow-hidden px-4 pb-4">
-        <Textarea
-          className="w-full h-full resize-none text-base border-none shadow-none focus-visible:ring-0"
+        <LexicalEditor
+          className="w-full h-full text-base"
           value={content}
-          onChange={(e) => setContent(e.target.value)}
+          onChange={(newContent) => setContent(newContent)}
           placeholder="Start typing..."
         />
       </div>
