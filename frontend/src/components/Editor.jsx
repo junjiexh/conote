@@ -21,14 +21,6 @@ const Editor = ({ document, onSave }) => {
   }, [document]);
 
   useEffect(() => {
-    console.log('Change detection:', {
-      title,
-      content,
-      documentTitle: document?.title,
-      documentContent: document?.content,
-      titleChanged: title !== document?.title,
-      contentChanged: content !== document?.content
-    });
     if (document && (title !== document.title || content !== document.content)) {
       setHasChanges(true);
     } else {
