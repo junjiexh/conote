@@ -3,12 +3,28 @@ import { useAuth } from '../context/AuthContext';
 import { documentAPI } from '../services/api';
 import DocumentTree from '../components/DocumentTree';
 import Editor from '../components/Editor';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Separator } from '@/components/ui/separator';
+import { LogOut, Loader2 } from 'lucide-react';
 
 const Dashboard = () => {
   const [tree, setTree] = useState([]);
   const [activeDocId, setActiveDocId] = useState(null);
   const [activeDocument, setActiveDocument] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [newDocTitle, setNewDocTitle] = useState('');
+  const [createParentId, setCreateParentId] = useState(null);
   const { logout } = useAuth();
 
   useEffect(() => {
@@ -37,32 +53,33 @@ const Dashboard = () => {
     }
   };
 
-  const handleCreateRoot = async () => {
-    const title = prompt('Enter document title:');
-    if (!title) return;
+  const openCreateDialog = (parentId = null) => {
+    setCreateParentId(parentId);
+    setNewDocTitle('');
+    setShowCreateDialog(true);
+  };
+
+  const handleCreateDocument = async () => {
+    if (!newDocTitle.trim()) return;
 
     try {
-      const response = await documentAPI.create(title, null);
+      const response = await documentAPI.create(newDocTitle, createParentId);
       await loadDocumentTree();
       handleSelectDocument(response.data.id);
+      setShowCreateDialog(false);
+      setNewDocTitle('');
     } catch (error) {
       console.error('Error creating document:', error);
       alert('Failed to create document');
     }
   };
 
-  const handleCreateChild = async (parentId) => {
-    const title = prompt('Enter document title:');
-    if (!title) return;
+  const handleCreateRoot = () => {
+    openCreateDialog(null);
+  };
 
-    try {
-      const response = await documentAPI.create(title, parentId);
-      await loadDocumentTree();
-      handleSelectDocument(response.data.id);
-    } catch (error) {
-      console.error('Error creating document:', error);
-      alert('Failed to create document');
-    }
+  const handleCreateChild = (parentId) => {
+    openCreateDialog(parentId);
   };
 
   const handleRename = async (id, newTitle) => {
@@ -96,6 +113,9 @@ const Dashboard = () => {
     try {
       await documentAPI.update(id, title, content);
       await loadDocumentTree();
+      if (activeDocId === id) {
+        setActiveDocument((prev) => ({...prev, title, content}))
+      }
     } catch (error) {
       console.error('Error saving document:', error);
       throw error;
@@ -108,21 +128,28 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="h-screen flex flex-col">
-      <header className="bg-blue-600 text-white p-4 flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Conote</h1>
-        <button
-          className="bg-blue-700 hover:bg-blue-800 px-4 py-2 rounded"
-          onClick={handleLogout}
-        >
-          Logout
-        </button>
+    <div className="h-screen flex flex-col bg-background">
+      <header className="border-b bg-card">
+        <div className="flex justify-between items-center p-4">
+          <h1 className="text-2xl font-bold text-primary">Conote</h1>
+          <Button
+            variant="outline"
+            onClick={handleLogout}
+          >
+            <LogOut className="mr-2 h-4 w-4" />
+            Logout
+          </Button>
+        </div>
+        <Separator />
       </header>
 
       <div className="flex-1 flex overflow-hidden">
-        <aside className="w-80 bg-gray-50 border-r overflow-y-auto">
+        <aside className="w-80 border-r bg-muted/30 overflow-y-auto">
           {loading ? (
-            <div className="p-4 text-center text-gray-500">Loading...</div>
+            <div className="p-4 text-center text-muted-foreground flex items-center justify-center gap-2">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Loading...
+            </div>
           ) : (
             <DocumentTree
               tree={tree}
@@ -140,6 +167,40 @@ const Dashboard = () => {
           <Editor document={activeDocument} onSave={handleSaveDocument} />
         </main>
       </div>
+
+      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create New Document</DialogTitle>
+            <DialogDescription>
+              {createParentId ? 'Enter a title for the child document.' : 'Enter a title for the new document.'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="title">Document Title</Label>
+            <Input
+              id="title"
+              placeholder="Enter document title"
+              value={newDocTitle}
+              onChange={(e) => setNewDocTitle(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  handleCreateDocument();
+                }
+              }}
+              autoFocus
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleCreateDocument} disabled={!newDocTitle.trim()}>
+              Create
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

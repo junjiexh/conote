@@ -78,7 +78,68 @@ CREATE TABLE documents (
 
 ## Setup and Installation
 
-### Prerequisites
+### Quick Start with Docker (Recommended)
+
+The easiest way to run Conote is using Docker Compose. This will start all services (database, backend, and frontend) with a single command.
+
+#### Prerequisites
+- Docker Desktop or Docker Engine 20.10+
+- Docker Compose 2.0+
+
+#### Steps
+
+1. Clone the repository:
+```bash
+git clone <repository-url>
+cd conote
+```
+
+2. (Optional) Customize environment variables:
+```bash
+cp .env.example .env
+# Edit .env with your preferred settings
+```
+
+3. Start all services:
+```bash
+docker-compose up -d
+```
+
+4. Access the application:
+- Frontend: http://localhost:3000
+- Backend API: http://localhost:8080
+- PostgreSQL: localhost:5432
+
+5. View logs:
+```bash
+docker-compose logs -f
+```
+
+6. Stop all services:
+```bash
+docker-compose down
+```
+
+7. Stop and remove all data (including database):
+```bash
+docker-compose down -v
+```
+
+#### Docker Environment Variables
+
+You can customize the deployment by editing the `.env` file:
+
+- `POSTGRES_DB` - Database name (default: conote)
+- `POSTGRES_USER` - Database user (default: postgres)
+- `POSTGRES_PASSWORD` - Database password (default: postgres)
+- `JWT_SECRET` - JWT signing secret (change in production!)
+- `JWT_EXPIRATION` - JWT token expiration in milliseconds (default: 86400000 = 24 hours)
+- `CORS_ALLOWED_ORIGINS` - Comma-separated list of allowed origins
+- `VITE_API_URL` - Backend API URL for frontend (default: http://localhost:8080/api)
+
+### Manual Setup (Without Docker)
+
+#### Prerequisites
 - Java 17 or higher
 - Node.js 18 or higher
 - PostgreSQL 14 or higher
