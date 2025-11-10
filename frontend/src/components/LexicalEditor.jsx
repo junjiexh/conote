@@ -224,7 +224,7 @@ const LexicalEditor = ({ value, onChange, placeholder, className }) => {
     <LexicalComposer initialConfig={initialConfig}>
       <div className={`border rounded-lg overflow-hidden ${className || ''}`}>
         <ToolbarPlugin />
-        <div className="relative bg-white">
+        <div className="relative bg-background">
           <RichTextPlugin
             contentEditable={
               <ContentEditable
