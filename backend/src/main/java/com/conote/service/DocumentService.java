@@ -4,8 +4,10 @@ import com.conote.dto.*;
 import com.conote.exception.BadRequestException;
 import com.conote.exception.ResourceNotFoundException;
 import com.conote.model.Document;
+import com.conote.model.DocumentSearchIndex;
 import com.conote.model.User;
 import com.conote.repository.DocumentRepository;
+import com.conote.repository.DocumentSearchRepository;
 import com.conote.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
@@ -28,6 +30,7 @@ import java.util.stream.Collectors;
 public class DocumentService {
 
     private final DocumentRepository documentRepository;
+    private final DocumentSearchRepository documentSearchRepository;
     private final UserRepository userRepository;
 
     public UUID getCurrentUserId() {
@@ -104,7 +107,13 @@ public class DocumentService {
         document.setTitle(request.getTitle());
         document.setContent("");
 
-        return documentRepository.save(document);
+        Document savedDocument = documentRepository.save(document);
+
+        // Index in Elasticsearch
+        DocumentSearchIndex searchIndex = DocumentSearchIndex.fromDocument(savedDocument);
+        documentSearchRepository.save(searchIndex);
+
+        return savedDocument;
     }
 
     @Transactional
@@ -121,7 +130,13 @@ public class DocumentService {
             document.setContent(request.getContent());
         }
 
-        return documentRepository.save(document);
+        Document savedDocument = documentRepository.save(document);
+
+        // Update in Elasticsearch
+        DocumentSearchIndex searchIndex = DocumentSearchIndex.fromDocument(savedDocument);
+        documentSearchRepository.save(searchIndex);
+
+        return savedDocument;
     }
 
     @Transactional
@@ -175,18 +190,19 @@ public class DocumentService {
         UUID userId = getCurrentUserId();
         Document document = documentRepository.findByIdAndUserId(id, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Document", "id", id));
+
         documentRepository.delete(document);
+
+        // Delete from Elasticsearch
+        documentSearchRepository.deleteById(id.toString());
     }
 
     /**
-     * Search documents using PostgreSQL full-text search with ranking.
+     * Search documents using Elasticsearch with fuzzy matching and ranking.
      * Supports pagination and returns results ranked by relevance.
      */
     public SearchResponse searchDocuments(SearchRequest request) {
         UUID userId = getCurrentUserId();
-
-        // Convert search query to tsquery format (replace spaces with &)
-        String tsQuery = formatSearchQuery(request.getQuery());
 
         // Create pageable
         Pageable pageable = PageRequest.of(
@@ -194,41 +210,42 @@ public class DocumentService {
                 request.getSize()
         );
 
-        // Execute search
-        Page<Document> page = documentRepository.searchDocumentsWithPagination(
-                userId,
-                tsQuery,
+        // Execute search using Elasticsearch
+        Page<DocumentSearchIndex> searchPage = documentSearchRepository.searchByUserIdAndQuery(
+                userId.toString(),
+                request.getQuery(),
                 pageable
         );
 
+        // Convert search results to Document entities
+        List<Document> documents = searchPage.getContent().stream()
+                .map(this::convertSearchIndexToDocument)
+                .collect(Collectors.toList());
+
         // Build response
         SearchResponse response = new SearchResponse();
-        response.setResults(page.getContent());
-        response.setTotalResults(page.getTotalElements());
-        response.setCurrentPage(page.getNumber());
-        response.setPageSize(page.getSize());
-        response.setTotalPages(page.getTotalPages());
-        response.setHasMore(page.hasNext());
+        response.setResults(documents);
+        response.setTotalResults(searchPage.getTotalElements());
+        response.setCurrentPage(searchPage.getNumber());
+        response.setPageSize(searchPage.getSize());
+        response.setTotalPages(searchPage.getTotalPages());
+        response.setHasMore(searchPage.hasNext());
 
         return response;
     }
 
     /**
-     * Format search query for PostgreSQL to_tsquery.
-     * Replaces spaces with & operator and handles special characters.
+     * Convert DocumentSearchIndex to Document entity.
      */
-    private String formatSearchQuery(String query) {
-        if (query == null || query.isBlank()) {
-            return "";
-        }
-        // Remove special characters except & and |
-        String cleaned = query.replaceAll("[^a-zA-Z0-9\\s&|]", "");
-        // Replace multiple spaces with single space
-        cleaned = cleaned.replaceAll("\\s+", " ").trim();
-        // If no operators present, treat as AND search (replace spaces with &)
-        if (!cleaned.contains("&") && !cleaned.contains("|")) {
-            cleaned = cleaned.replace(" ", " & ");
-        }
-        return cleaned;
+    private Document convertSearchIndexToDocument(DocumentSearchIndex searchIndex) {
+        Document document = new Document();
+        document.setId(UUID.fromString(searchIndex.getId()));
+        document.setUserId(UUID.fromString(searchIndex.getUserId()));
+        document.setParentId(searchIndex.getParentId() != null ? UUID.fromString(searchIndex.getParentId()) : null);
+        document.setTitle(searchIndex.getTitle());
+        document.setContent(searchIndex.getContent());
+        document.setCreatedAt(searchIndex.getCreatedAt());
+        document.setUpdatedAt(searchIndex.getUpdatedAt());
+        return document;
     }
 }

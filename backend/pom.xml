@@ -126,6 +126,12 @@
             <artifactId>spring-boot-starter-cache</artifactId>
         </dependency>
 
+        <!-- Elasticsearch for Search -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-elasticsearch</artifactId>
+        </dependency>
+
         <!-- Micrometer for Prometheus Metrics -->
         <dependency>
             <groupId>io.micrometer</groupId>
