@@ -1,7 +1,7 @@
 # Issues
 
 - [x] Unexpected behavior when try to save empty editor body.
-- [ ] Improve ui. Use claude theme
+- [x] Improve ui. Use claude theme
 - [ ] Support rich-text
     - Tiptap (modern, headless, based on Prosemirror), Quill.js, or Lexical, compare them and make decisions
 - [ ] Real time collaboration

@@ -46,21 +46,6 @@ services:
     networks:
       - conote-network
 
-  # React Frontend
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-      args:
-        VITE_API_URL: ${VITE_API_URL:-http://localhost:8080/api}
-    container_name: conote-frontend
-    ports:
-      - "3000:3000"
-    depends_on:
-      - backend
-    networks:
-      - conote-network
-
 networks:
   conote-network:
     driver: bridge
