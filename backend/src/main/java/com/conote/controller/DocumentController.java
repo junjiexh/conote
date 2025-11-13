@@ -1,10 +1,6 @@
 package com.conote.controller;
 
-import com.conote.dto.CreateDocumentRequest;
-import com.conote.dto.DocumentTreeNode;
-import com.conote.dto.ErrorResponse;
-import com.conote.dto.MoveDocumentRequest;
-import com.conote.dto.UpdateDocumentRequest;
+import com.conote.dto.*;
 import com.conote.model.Document;
 import com.conote.service.DocumentService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -189,5 +185,32 @@ public class DocumentController {
             @PathVariable UUID id) {
         documentService.deleteDocument(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/search")
+    @Operation(
+            summary = "Search documents with full-text search",
+            description = "Performs PostgreSQL full-text search across document titles and content with relevance ranking. Supports AND (&) and OR (|) operators."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Search completed successfully with ranked results",
+                    content = @Content(schema = @Schema(implementation = SearchResponse.class))
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "Invalid search query",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+            )
+    })
+    public ResponseEntity<SearchResponse> searchDocuments(
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    description = "Search request with query and pagination parameters",
+                    required = true
+            )
+            @Valid @RequestBody SearchRequest request) {
+        SearchResponse response = documentService.searchDocuments(request);
+        return ResponseEntity.ok(response);
     }
 }

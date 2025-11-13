@@ -1,9 +1,6 @@
 package com.conote.service;
 
-import com.conote.dto.CreateDocumentRequest;
-import com.conote.dto.DocumentTreeNode;
-import com.conote.dto.MoveDocumentRequest;
-import com.conote.dto.UpdateDocumentRequest;
+import com.conote.dto.*;
 import com.conote.exception.BadRequestException;
 import com.conote.exception.ResourceNotFoundException;
 import com.conote.model.Document;
@@ -11,6 +8,11 @@ import com.conote.model.User;
 import com.conote.repository.DocumentRepository;
 import com.conote.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,6 +20,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.*;
 import java.util.stream.Collectors;
 
+/**
+ * Service layer for document operations with Redis caching and performance optimizations.
+ */
 @Service
 public class DocumentService {
 
@@ -34,6 +39,11 @@ public class DocumentService {
         return user.getId();
     }
 
+    /**
+     * Get document tree with Redis caching.
+     * Cache is evicted when documents are created, updated, moved, or deleted.
+     */
+    @Cacheable(value = "documentTree", key = "#root.target.currentUserId")
     public List<DocumentTreeNode> getDocumentTree() {
         UUID userId = getCurrentUserId();
         List<Document> documents = documentRepository.findByUserId(userId);
@@ -80,6 +90,7 @@ public class DocumentService {
     }
 
     @Transactional
+    @CacheEvict(value = "documentTree", key = "#root.target.currentUserId")
     public Document createDocument(CreateDocumentRequest request) {
         UUID userId = getCurrentUserId();
 
@@ -99,6 +110,7 @@ public class DocumentService {
     }
 
     @Transactional
+    @CacheEvict(value = "documentTree", key = "#root.target.currentUserId")
     public Document updateDocument(UUID id, UpdateDocumentRequest request) {
         UUID userId = getCurrentUserId();
         Document document = documentRepository.findByIdAndUserId(id, userId)
@@ -115,6 +127,7 @@ public class DocumentService {
     }
 
     @Transactional
+    @CacheEvict(value = "documentTree", key = "#root.target.currentUserId")
     public void moveDocument(UUID id, MoveDocumentRequest request) {
         UUID userId = getCurrentUserId();
         Document document = documentRepository.findByIdAndUserId(id, userId)
@@ -159,10 +172,65 @@ public class DocumentService {
     }
 
     @Transactional
+    @CacheEvict(value = "documentTree", key = "#root.target.currentUserId")
     public void deleteDocument(UUID id) {
         UUID userId = getCurrentUserId();
         Document document = documentRepository.findByIdAndUserId(id, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Document", "id", id));
         documentRepository.delete(document);
+    }
+
+    /**
+     * Search documents using PostgreSQL full-text search with ranking.
+     * Supports pagination and returns results ranked by relevance.
+     */
+    public SearchResponse searchDocuments(SearchRequest request) {
+        UUID userId = getCurrentUserId();
+
+        // Convert search query to tsquery format (replace spaces with &)
+        String tsQuery = formatSearchQuery(request.getQuery());
+
+        // Create pageable
+        Pageable pageable = PageRequest.of(
+                request.getPage(),
+                request.getSize()
+        );
+
+        // Execute search
+        Page<Document> page = documentRepository.searchDocumentsWithPagination(
+                userId,
+                tsQuery,
+                pageable
+        );
+
+        // Build response
+        SearchResponse response = new SearchResponse();
+        response.setResults(page.getContent());
+        response.setTotalResults(page.getTotalElements());
+        response.setCurrentPage(page.getNumber());
+        response.setPageSize(page.getSize());
+        response.setTotalPages(page.getTotalPages());
+        response.setHasMore(page.hasNext());
+
+        return response;
+    }
+
+    /**
+     * Format search query for PostgreSQL to_tsquery.
+     * Replaces spaces with & operator and handles special characters.
+     */
+    private String formatSearchQuery(String query) {
+        if (query == null || query.isBlank()) {
+            return "";
+        }
+        // Remove special characters except & and |
+        String cleaned = query.replaceAll("[^a-zA-Z0-9\\s&|]", "");
+        // Replace multiple spaces with single space
+        cleaned = cleaned.replaceAll("\\s+", " ").trim();
+        // If no operators present, treat as AND search (replace spaces with &)
+        if (!cleaned.contains("&") && !cleaned.contains("|")) {
+            cleaned = cleaned.replace(" ", " & ");
+        }
+        return cleaned;
     }
 }
