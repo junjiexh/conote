@@ -146,6 +146,11 @@
             <artifactId>flyway-core</artifactId>
         </dependency>
         <!-- PostgreSQL support is included in flyway-core when postgresql driver is present -->
+
+        <dependency>
+            <groupId>com.fasterxml.jackson.datatype</groupId>
+            <artifactId>jackson-datatype-jsr310</artifactId>
+        </dependency>
     </dependencies>
 
     <build>

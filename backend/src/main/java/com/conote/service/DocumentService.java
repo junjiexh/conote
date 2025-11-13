@@ -30,7 +30,7 @@ public class DocumentService {
     private final DocumentRepository documentRepository;
     private final UserRepository userRepository;
 
-    private UUID getCurrentUserId() {
+    public UUID getCurrentUserId() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "email", email));
@@ -41,7 +41,7 @@ public class DocumentService {
      * Get document tree with Redis caching.
      * Cache is evicted when documents are created, updated, moved, or deleted.
      */
-    @Cacheable(value = "documentTree", key = "#root.target.currentUserId")
+    @Cacheable(value = "documentTree", key = "#root.target.getCurrentUserId()")
     public List<DocumentTreeNode> getDocumentTree() {
         UUID userId = getCurrentUserId();
         List<Document> documents = documentRepository.findByUserId(userId);
@@ -88,7 +88,7 @@ public class DocumentService {
     }
 
     @Transactional
-    @CacheEvict(value = "documentTree", key = "#root.target.currentUserId")
+    @CacheEvict(value = "documentTree", key = "#root.target.getCurrentUserId()")
     public Document createDocument(CreateDocumentRequest request) {
         UUID userId = getCurrentUserId();
 
@@ -108,7 +108,7 @@ public class DocumentService {
     }
 
     @Transactional
-    @CacheEvict(value = "documentTree", key = "#root.target.currentUserId")
+    @CacheEvict(value = "documentTree", key = "#root.target.getCurrentUserId()")
     public Document updateDocument(UUID id, UpdateDocumentRequest request) {
         UUID userId = getCurrentUserId();
         Document document = documentRepository.findByIdAndUserId(id, userId)
@@ -125,7 +125,7 @@ public class DocumentService {
     }
 
     @Transactional
-    @CacheEvict(value = "documentTree", key = "#root.target.currentUserId")
+    @CacheEvict(value = "documentTree", key = "#root.target.getCurrentUserId()")
     public void moveDocument(UUID id, MoveDocumentRequest request) {
         UUID userId = getCurrentUserId();
         Document document = documentRepository.findByIdAndUserId(id, userId)
@@ -170,7 +170,7 @@ public class DocumentService {
     }
 
     @Transactional
-    @CacheEvict(value = "documentTree", key = "#root.target.currentUserId")
+    @CacheEvict(value = "documentTree", key = "#root.target.getCurrentUserId()")
     public void deleteDocument(UUID id) {
         UUID userId = getCurrentUserId();
         Document document = documentRepository.findByIdAndUserId(id, userId)
