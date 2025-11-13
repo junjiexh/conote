@@ -31,6 +31,41 @@ CREATE TABLE IF NOT EXISTS documents (
         ON DELETE SET NULL -- Or ON DELETE CASCADE, based on desired behavior
 );
 
--- Indexes for performance
+-- Single-column indexes for basic queries
 CREATE INDEX IF NOT EXISTS idx_doc_user_id ON documents (user_id);
 CREATE INDEX IF NOT EXISTS idx_doc_parent_id ON documents (parent_id);
+
+-- Composite indexes for optimized queries
+-- For filtered tree queries (finding children of parent for specific user)
+CREATE INDEX IF NOT EXISTS idx_doc_user_parent ON documents (user_id, parent_id);
+
+-- For sorting and pagination by creation date for specific user
+CREATE INDEX IF NOT EXISTS idx_doc_user_created ON documents (user_id, created_at DESC);
+
+-- For sorting and pagination by update date for specific user
+CREATE INDEX IF NOT EXISTS idx_doc_user_updated ON documents (user_id, updated_at DESC);
+
+-- Full-text search indexes (for advanced search functionality)
+-- Add tsvector column for full-text search on title and content
+ALTER TABLE documents ADD COLUMN IF NOT EXISTS search_vector tsvector;
+
+-- Create GIN index for full-text search performance
+CREATE INDEX IF NOT EXISTS idx_doc_search ON documents USING GIN (search_vector);
+
+-- Function to update search_vector automatically
+CREATE OR REPLACE FUNCTION documents_search_vector_update() RETURNS trigger AS $$
+BEGIN
+    NEW.search_vector :=
+        setweight(to_tsvector('english', COALESCE(NEW.title, '')), 'A') ||
+        setweight(to_tsvector('english', COALESCE(NEW.content, '')), 'B');
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger to keep search_vector updated
+DROP TRIGGER IF EXISTS documents_search_vector_trigger ON documents;
+CREATE TRIGGER documents_search_vector_trigger
+    BEFORE INSERT OR UPDATE OF title, content
+    ON documents
+    FOR EACH ROW
+    EXECUTE FUNCTION documents_search_vector_update();
