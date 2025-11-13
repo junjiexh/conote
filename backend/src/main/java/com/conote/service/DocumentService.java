@@ -7,7 +7,7 @@ import com.conote.model.Document;
 import com.conote.model.User;
 import com.conote.repository.DocumentRepository;
 import com.conote.repository.UserRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
@@ -24,13 +24,11 @@ import java.util.stream.Collectors;
  * Service layer for document operations with Redis caching and performance optimizations.
  */
 @Service
+@RequiredArgsConstructor
 public class DocumentService {
 
-    @Autowired
-    private DocumentRepository documentRepository;
-
-    @Autowired
-    private UserRepository userRepository;
+    private final DocumentRepository documentRepository;
+    private final UserRepository userRepository;
 
     private UUID getCurrentUserId() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
