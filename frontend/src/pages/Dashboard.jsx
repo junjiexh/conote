@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { documentAPI } from '../services/api';
 import DocumentTree from '../components/DocumentTree';
 import Editor from '../components/Editor';
+import SearchDialog from '../components/SearchDialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,7 +16,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
-import { LogOut, Loader2 } from 'lucide-react';
+import { LogOut, Loader2, Search } from 'lucide-react';
 
 const Dashboard = () => {
   const [tree, setTree] = useState([]);
@@ -25,6 +26,7 @@ const Dashboard = () => {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [newDocTitle, setNewDocTitle] = useState('');
   const [createParentId, setCreateParentId] = useState(null);
+  const [showSearchDialog, setShowSearchDialog] = useState(false);
   const { logout } = useAuth();
 
   useEffect(() => {
@@ -127,18 +129,31 @@ const Dashboard = () => {
     window.location.href = '/login';
   };
 
+  const handleSearchResultSelect = (document) => {
+    handleSelectDocument(document.id);
+  };
+
   return (
     <div className="h-screen flex flex-col bg-background">
       <header className="border-b bg-card">
         <div className="flex justify-between items-center p-4">
           <h1 className="text-2xl font-bold text-primary">Conote</h1>
-          <Button
-            variant="outline"
-            onClick={handleLogout}
-          >
-            <LogOut className="mr-2 h-4 w-4" />
-            Logout
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setShowSearchDialog(true)}
+            >
+              <Search className="mr-2 h-4 w-4" />
+              Search
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleLogout}
+            >
+              <LogOut className="mr-2 h-4 w-4" />
+              Logout
+            </Button>
+          </div>
         </div>
         <Separator />
       </header>
@@ -201,6 +216,12 @@ const Dashboard = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <SearchDialog
+        open={showSearchDialog}
+        onOpenChange={setShowSearchDialog}
+        onSelectDocument={handleSearchResultSelect}
+      />
     </div>
   );
 };

@@ -54,6 +54,8 @@ export const documentAPI = {
   move: (id, newParentId) =>
     api.patch(`/documents/${id}/move`, { newParentId }),
   delete: (id) => api.delete(`/documents/${id}`),
+  search: (query, page = 0, size = 20) =>
+    api.post('/documents/search', { query, page, size }),
 };
 
 export default api;
