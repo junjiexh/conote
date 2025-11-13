@@ -4,6 +4,8 @@ import com.conote.dto.CreateDocumentRequest;
 import com.conote.dto.DocumentTreeNode;
 import com.conote.dto.MoveDocumentRequest;
 import com.conote.dto.UpdateDocumentRequest;
+import com.conote.exception.BadRequestException;
+import com.conote.exception.ResourceNotFoundException;
 import com.conote.model.Document;
 import com.conote.model.User;
 import com.conote.repository.DocumentRepository;
@@ -28,7 +30,7 @@ public class DocumentService {
     private UUID getCurrentUserId() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User", "email", email));
         return user.getId();
     }
 
@@ -74,7 +76,7 @@ public class DocumentService {
     public Document getDocument(UUID id) {
         UUID userId = getCurrentUserId();
         return documentRepository.findByIdAndUserId(id, userId)
-                .orElseThrow(() -> new RuntimeException("Document not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Document", "id", id));
     }
 
     @Transactional
@@ -84,7 +86,7 @@ public class DocumentService {
         // Verify parent exists if parentId is provided
         if (request.getParentId() != null) {
             documentRepository.findByIdAndUserId(request.getParentId(), userId)
-                    .orElseThrow(() -> new RuntimeException("Parent document not found"));
+                    .orElseThrow(() -> new ResourceNotFoundException("Parent document", "id", request.getParentId()));
         }
 
         Document document = new Document();
@@ -100,7 +102,7 @@ public class DocumentService {
     public Document updateDocument(UUID id, UpdateDocumentRequest request) {
         UUID userId = getCurrentUserId();
         Document document = documentRepository.findByIdAndUserId(id, userId)
-                .orElseThrow(() -> new RuntimeException("Document not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Document", "id", id));
 
         if (request.getTitle() != null) {
             document.setTitle(request.getTitle());
@@ -116,16 +118,16 @@ public class DocumentService {
     public void moveDocument(UUID id, MoveDocumentRequest request) {
         UUID userId = getCurrentUserId();
         Document document = documentRepository.findByIdAndUserId(id, userId)
-                .orElseThrow(() -> new RuntimeException("Document not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Document", "id", id));
 
         // Verify new parent exists if provided
         if (request.getNewParentId() != null) {
             documentRepository.findByIdAndUserId(request.getNewParentId(), userId)
-                    .orElseThrow(() -> new RuntimeException("New parent document not found"));
+                    .orElseThrow(() -> new ResourceNotFoundException("New parent document", "id", request.getNewParentId()));
 
             // Check for circular reference
             if (wouldCreateCircularReference(id, request.getNewParentId(), userId)) {
-                throw new RuntimeException("Moving document would create a circular reference");
+                throw new BadRequestException("Moving document would create a circular reference");
             }
         }
 
@@ -160,7 +162,7 @@ public class DocumentService {
     public void deleteDocument(UUID id) {
         UUID userId = getCurrentUserId();
         Document document = documentRepository.findByIdAndUserId(id, userId)
-                .orElseThrow(() -> new RuntimeException("Document not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Document", "id", id));
         documentRepository.delete(document);
     }
 }

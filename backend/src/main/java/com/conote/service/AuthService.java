@@ -2,6 +2,7 @@ package com.conote.service;
 
 import com.conote.dto.AuthRequest;
 import com.conote.dto.AuthResponse;
+import com.conote.exception.ConflictException;
 import com.conote.model.User;
 import com.conote.repository.UserRepository;
 import com.conote.security.JwtUtil;
@@ -28,7 +29,7 @@ public class AuthService {
 
     public AuthResponse register(AuthRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
-            throw new RuntimeException("Email already exists");
+            throw new ConflictException("Email already exists: " + request.getEmail());
         }
 
         User user = new User();

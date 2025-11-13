@@ -2,10 +2,19 @@ package com.conote.controller;
 
 import com.conote.dto.CreateDocumentRequest;
 import com.conote.dto.DocumentTreeNode;
+import com.conote.dto.ErrorResponse;
 import com.conote.dto.MoveDocumentRequest;
 import com.conote.dto.UpdateDocumentRequest;
 import com.conote.model.Document;
 import com.conote.service.DocumentService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -17,68 +26,168 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/documents")
+@Tag(name = "Documents", description = "Document management API for hierarchical document operations")
+@SecurityRequirement(name = "bearerAuth")
 public class DocumentController {
 
     @Autowired
     private DocumentService documentService;
 
     @GetMapping
+    @Operation(
+            summary = "Get all documents as a tree structure",
+            description = "Returns all documents for the authenticated user organized in a hierarchical tree structure"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Successfully retrieved document tree",
+                    content = @Content(schema = @Schema(implementation = DocumentTreeNode.class))
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "Unauthorized - Invalid or missing JWT token",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+            )
+    })
     public ResponseEntity<List<DocumentTreeNode>> getAllDocuments() {
         List<DocumentTreeNode> tree = documentService.getDocumentTree();
         return ResponseEntity.ok(tree);
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Document> getDocument(@PathVariable UUID id) {
-        try {
-            Document document = documentService.getDocument(id);
-            return ResponseEntity.ok(document);
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        }
+    @Operation(
+            summary = "Get document by ID",
+            description = "Returns a single document with full content by its ID. User can only access their own documents."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Document found and returned",
+                    content = @Content(schema = @Schema(implementation = Document.class))
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "Document not found or user doesn't have access",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+            )
+    })
+    public ResponseEntity<Document> getDocument(
+            @Parameter(description = "Document UUID", required = true)
+            @PathVariable UUID id) {
+        Document document = documentService.getDocument(id);
+        return ResponseEntity.ok(document);
     }
 
     @PostMapping
-    public ResponseEntity<Document> createDocument(@Valid @RequestBody CreateDocumentRequest request) {
-        try {
-            Document document = documentService.createDocument(request);
-            return ResponseEntity.status(HttpStatus.CREATED).body(document);
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().build();
-        }
+    @Operation(
+            summary = "Create a new document",
+            description = "Creates a new document. Can be created as a root document (parentId = null) or as a child of an existing document."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "201",
+                    description = "Document created successfully",
+                    content = @Content(schema = @Schema(implementation = Document.class))
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "Invalid request - validation failed or parent not found",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+            )
+    })
+    public ResponseEntity<Document> createDocument(
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    description = "Document creation request with title and optional parent ID",
+                    required = true
+            )
+            @Valid @RequestBody CreateDocumentRequest request) {
+        Document document = documentService.createDocument(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(document);
     }
 
     @PutMapping("/{id}")
+    @Operation(
+            summary = "Update document",
+            description = "Updates the title and/or content of an existing document. Only provided fields will be updated."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Document updated successfully",
+                    content = @Content(schema = @Schema(implementation = Document.class))
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "Document not found",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+            )
+    })
     public ResponseEntity<Document> updateDocument(
+            @Parameter(description = "Document UUID", required = true)
             @PathVariable UUID id,
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    description = "Update request with optional title and content",
+                    required = true
+            )
             @Valid @RequestBody UpdateDocumentRequest request) {
-        try {
-            Document document = documentService.updateDocument(id, request);
-            return ResponseEntity.ok(document);
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        }
+        Document document = documentService.updateDocument(id, request);
+        return ResponseEntity.ok(document);
     }
 
     @PatchMapping("/{id}/move")
+    @Operation(
+            summary = "Move document in hierarchy",
+            description = "Moves a document to a new parent or to root level. Prevents circular references."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Document moved successfully"
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "Invalid request - circular reference detected or parent not found",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "Document not found",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+            )
+    })
     public ResponseEntity<Void> moveDocument(
+            @Parameter(description = "Document UUID to move", required = true)
             @PathVariable UUID id,
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    description = "Move request with new parent ID (null for root level)",
+                    required = true
+            )
             @Valid @RequestBody MoveDocumentRequest request) {
-        try {
-            documentService.moveDocument(id, request);
-            return ResponseEntity.ok().build();
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().build();
-        }
+        documentService.moveDocument(id, request);
+        return ResponseEntity.ok().build();
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteDocument(@PathVariable UUID id) {
-        try {
-            documentService.deleteDocument(id);
-            return ResponseEntity.noContent().build();
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        }
+    @Operation(
+            summary = "Delete document",
+            description = "Permanently deletes a document. Child documents will have their parent_id set to null (moved to root)."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "204",
+                    description = "Document deleted successfully"
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "Document not found",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+            )
+    })
+    public ResponseEntity<Void> deleteDocument(
+            @Parameter(description = "Document UUID to delete", required = true)
+            @PathVariable UUID id) {
+        documentService.deleteDocument(id);
+        return ResponseEntity.noContent().build();
     }
 }
