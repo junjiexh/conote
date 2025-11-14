@@ -133,39 +133,35 @@ function ToolbarPlugin() {
   );
 }
 
-// Plugin to update editor content when value prop changes
-function UpdatePlugin({ value }) {
+// Plugin to set initial editor content
+function InitialContentPlugin({ value }) {
   const [editor] = useLexicalComposerContext();
+  const [initialized, setInitialized] = React.useState(false);
 
   useEffect(() => {
+    // Only run once when component mounts
+    if (initialized) return;
+
     if (!value) {
-      editor.update(() => {
-        const root = $getRoot();
-        root.clear();
-      });
+      setInitialized(true);
       return;
     }
 
     editor.update(() => {
       const root = $getRoot();
+      root.clear();
 
-      // Generate HTML from current state to compare
-      const currentHtml = $generateHtmlFromNodes(editor, null);
+      // Parse HTML and create nodes
+      const parser = new DOMParser();
+      const dom = parser.parseFromString(value, 'text/html');
+      const nodes = $generateNodesFromDOM(editor, dom);
 
-      // Only update if content is different
-      if (currentHtml !== value) {
-        root.clear();
-
-        // Parse HTML and create nodes
-        const parser = new DOMParser();
-        const dom = parser.parseFromString(value, 'text/html');
-        const nodes = $generateNodesFromDOM(editor, dom);
-
-        // Append nodes to root
-        nodes.forEach(node => root.append(node));
-      }
+      // Append nodes to root
+      nodes.forEach(node => root.append(node));
     });
-  }, [editor, value]);
+
+    setInitialized(true);
+  }, [editor, initialized, value]);
 
   return null;
 }
@@ -245,7 +241,7 @@ const LexicalEditor = ({ value, onChange, placeholder, className }) => {
         <ListPlugin />
         <LinkPlugin />
         <MarkdownShortcutPlugin transformers={TRANSFORMERS} />
-        <UpdatePlugin value={value} />
+        <InitialContentPlugin value={value} />
       </div>
     </LexicalComposer>
   );

@@ -6,6 +6,11 @@
       "analyzer": {
         "standard": {
           "type": "standard"
+        },
+        "html_strip_analyzer": {
+          "type": "custom",
+          "tokenizer": "standard",
+          "char_filter": ["html_strip"]
         }
       }
     }

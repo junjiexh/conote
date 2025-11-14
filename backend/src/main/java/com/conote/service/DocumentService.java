@@ -10,6 +10,7 @@ import com.conote.repository.DocumentRepository;
 import com.conote.repository.DocumentSearchRepository;
 import com.conote.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
@@ -25,6 +26,7 @@ import java.util.stream.Collectors;
 /**
  * Service layer for document operations with Redis caching and performance optimizations.
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class DocumentService {
@@ -108,6 +110,7 @@ public class DocumentService {
         document.setContent("");
 
         Document savedDocument = documentRepository.save(document);
+        log.info("saved document is {}", document);
 
         // Index in Elasticsearch
         DocumentSearchIndex searchIndex = DocumentSearchIndex.fromDocument(savedDocument);
@@ -131,6 +134,7 @@ public class DocumentService {
         }
 
         Document savedDocument = documentRepository.save(document);
+        log.info("updated document is {}", document);
 
         // Update in Elasticsearch
         DocumentSearchIndex searchIndex = DocumentSearchIndex.fromDocument(savedDocument);
