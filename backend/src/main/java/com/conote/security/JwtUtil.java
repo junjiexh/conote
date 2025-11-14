@@ -1,9 +1,11 @@
 package com.conote.security;
 
+import com.conote.model.User;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
@@ -13,10 +15,13 @@ import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 import java.util.function.Function;
 
 @Component
 public class JwtUtil {
+
+    private static final Logger logger = LoggerFactory.getLogger(JwtUtil.class);
 
     @Value("${jwt.secret}")
     private String secret;
@@ -28,8 +33,17 @@ public class JwtUtil {
         return Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
     }
 
-    public String extractUsername(String token) {
+    public String extractUserId(String token) {
         return extractClaim(token, Claims::getSubject);
+    }
+
+    public String extractEmail(String token) {
+        return extractClaim(token, Claims::getSubject);
+    }
+
+    public UUID extractUserUuid(String token) {
+        String userIdStr = (String) extractClaim(token, claims -> claims.get("userId"));
+        return UUID.fromString(userIdStr);
     }
 
     public Date extractExpiration(String token) {
@@ -53,9 +67,16 @@ public class JwtUtil {
         return extractExpiration(token).before(new Date());
     }
 
-    public String generateToken(String username) {
+    public String generateToken(User user) {
         Map<String, Object> claims = new HashMap<>();
-        return createToken(claims, username);
+        claims.put("userId", user.getId().toString());
+        return createToken(claims, user.getEmail());
+    }
+
+    // Only use for testing
+    public String generateTokenSimple(String email) {
+        Map<String, Object> claims = new HashMap<>();
+        return createToken(claims, email);
     }
 
     private String createToken(Map<String, Object> claims, String subject) {
@@ -69,7 +90,16 @@ public class JwtUtil {
     }
 
     public Boolean validateToken(String token, UserDetails userDetails) {
-        final String username = extractUsername(token);
-        return (username.equals(userDetails.getUsername()) && !isTokenExpired(token));
+        final String userId = extractUserId(token);
+        final String username = userDetails.getUsername();
+        boolean isExpired = isTokenExpired(token);
+
+        logger.info("Validating token - userId from token: {}, username from UserDetails: {}, isExpired: {}",
+                    userId, username, isExpired);
+
+        boolean isValid = userId.equals(username) && !isExpired;
+        logger.info("Token validation result: {}", isValid);
+
+        return isValid;
     }
 }

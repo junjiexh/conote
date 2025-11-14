@@ -11,11 +11,13 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "documents")
+@Table(name = "folders", uniqueConstraints = {
+    @UniqueConstraint(columnNames = {"user_id", "name"})
+})
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class Document {
+public class Folder {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
@@ -23,17 +25,8 @@ public class Document {
     @Column(name = "user_id", nullable = false)
     private UUID userId;
 
-    @Column(name = "parent_id")
-    private UUID parentId;
-
-    @Column(name = "folder_id")
-    private UUID folderId;
-
     @Column(nullable = false)
-    private String title;
-
-    @Column(columnDefinition = "TEXT")
-    private String content;
+    private String name;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)

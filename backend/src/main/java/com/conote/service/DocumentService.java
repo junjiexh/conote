@@ -38,6 +38,7 @@ public class DocumentService {
     private final DocumentSearchRepository documentSearchRepository;
     private final UserRepository userRepository;
     private final PermissionService permissionService;
+    private final FolderService folderService;
 
     public UUID getCurrentUserId() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -84,6 +85,7 @@ public class DocumentService {
             DocumentTreeNode node = new DocumentTreeNode();
             node.setId(doc.getId());
             node.setParentId(doc.getParentId());
+            node.setFolderId(doc.getFolderId());
             node.setTitle(doc.getTitle());
             node.setContent(doc.getContent());
             node.setCreatedAt(doc.getCreatedAt());
@@ -135,9 +137,20 @@ public class DocumentService {
             }
         }
 
+        // Determine folder for the document
+        UUID folderId = request.getFolderId();
+        if (folderId == null) {
+            // If no folder specified, use the "personal" folder by default
+            folderId = folderService.createDefaultPersonalFolder(userId).getId();
+        } else {
+            // Verify folder exists and belongs to user
+            folderService.getFolderById(folderId, userId);
+        }
+
         Document document = new Document();
         document.setUserId(userId);
         document.setParentId(request.getParentId());
+        document.setFolderId(folderId);
         document.setTitle(request.getTitle());
         document.setContent("");
 
@@ -169,6 +182,11 @@ public class DocumentService {
         }
         if (request.getContent() != null) {
             document.setContent(request.getContent());
+        }
+        if (request.getFolderId() != null) {
+            // Verify folder exists and belongs to user
+            folderService.getFolderById(request.getFolderId(), userId);
+            document.setFolderId(request.getFolderId());
         }
 
         Document savedDocument = documentRepository.save(document);
@@ -301,6 +319,7 @@ public class DocumentService {
         document.setId(UUID.fromString(searchIndex.getId()));
         document.setUserId(UUID.fromString(searchIndex.getUserId()));
         document.setParentId(searchIndex.getParentId() != null ? UUID.fromString(searchIndex.getParentId()) : null);
+        document.setFolderId(searchIndex.getFolderId() != null ? UUID.fromString(searchIndex.getFolderId()) : null);
         document.setTitle(searchIndex.getTitle());
         document.setContent(searchIndex.getContent());
         document.setCreatedAt(searchIndex.getCreatedAt());

@@ -5,6 +5,7 @@ import com.conote.dto.AuthResponse;
 import com.conote.dto.PasswordStrengthResult;
 import com.conote.exception.BadRequestException;
 import com.conote.exception.ConflictException;
+import com.conote.exception.ResourceNotFoundException;
 import com.conote.exception.UnauthorizedAccessException;
 import com.conote.model.AuditLog;
 import com.conote.model.Role;
@@ -13,6 +14,7 @@ import com.conote.repository.UserRepository;
 import com.conote.security.JwtUtil;
 import com.conote.util.PasswordValidator;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -22,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AuthService {
@@ -32,6 +35,7 @@ public class AuthService {
     private final AuthenticationManager authenticationManager;
     private final PasswordValidator passwordValidator;
     private final AuditLogService auditLogService;
+    private final FolderService folderService;
 
     private static final int MAX_FAILED_ATTEMPTS = 5;
     private static final long LOCK_DURATION_MINUTES = 30;
@@ -68,6 +72,9 @@ public class AuthService {
 
         userRepository.save(user);
 
+        // Create default "personal" folder for the new user
+        folderService.createDefaultPersonalFolder(user.getId());
+
         // Audit log: successful registration
         auditLogService.logSuccess(
             user.getId(),
@@ -78,7 +85,7 @@ public class AuthService {
             null
         );
 
-        String token = jwtUtil.generateToken(user.getEmail());
+        String token = jwtUtil.generateToken(user);
         return new AuthResponse(token);
     }
 
@@ -93,8 +100,12 @@ public class AuthService {
      */
     @Transactional
     public AuthResponse login(AuthRequest request) {
+        log.info("Try to login with request {}", request);
         // Find user by email
-        User user = userRepository.findByEmail(request.getEmail()).orElse(null);
+        User user = userRepository.findByEmail(request.getEmail()).orElseThrow(
+                () -> new ResourceNotFoundException("user", "email", request.getEmail())
+        );
+        log.info("Get user by email={}, user={}", request.getEmail(), user);
 
         // Check if account exists and is locked
         if (user != null) {
@@ -136,7 +147,9 @@ public class AuthService {
                 );
             }
 
-            String token = jwtUtil.generateToken(request.getEmail());
+            assert user != null;
+            String token = jwtUtil.generateToken(user);
+            log.info("generated token for user {}, token={}", user.getEmail(), token);
             return new AuthResponse(token);
 
         } catch (BadCredentialsException e) {

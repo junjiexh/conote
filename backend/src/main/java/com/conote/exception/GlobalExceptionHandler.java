@@ -27,7 +27,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleResourceNotFound(
             ResourceNotFoundException ex, HttpServletRequest request) {
-        log.warn("Resource not found: {}", ex.getMessage());
+        log.error("Resource not found: {}", ex.getMessage());
 
         ErrorResponse errorResponse = new ErrorResponse(
                 HttpStatus.NOT_FOUND.value(),
@@ -42,7 +42,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(UnauthorizedAccessException.class)
     public ResponseEntity<ErrorResponse> handleUnauthorizedAccess(
             UnauthorizedAccessException ex, HttpServletRequest request) {
-        log.warn("Unauthorized access attempt: {}", ex.getMessage());
+        log.error("Unauthorized access attempt: {}", ex.getMessage());
 
         ErrorResponse errorResponse = new ErrorResponse(
                 HttpStatus.FORBIDDEN.value(),
@@ -57,7 +57,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ForbiddenException.class)
     public ResponseEntity<ErrorResponse> handleForbidden(
             ForbiddenException ex, HttpServletRequest request) {
-        log.warn("Permission denied: {}", ex.getMessage());
+        log.error("Permission denied: {}", ex.getMessage());
 
         ErrorResponse errorResponse = new ErrorResponse(
                 HttpStatus.FORBIDDEN.value(),
@@ -72,7 +72,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(BadRequestException.class)
     public ResponseEntity<ErrorResponse> handleBadRequest(
             BadRequestException ex, HttpServletRequest request) {
-        log.warn("Bad request: {}", ex.getMessage());
+        log.error("Bad request: {}", ex.getMessage());
 
         ErrorResponse errorResponse = new ErrorResponse(
                 HttpStatus.BAD_REQUEST.value(),
@@ -87,7 +87,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ConflictException.class)
     public ResponseEntity<ErrorResponse> handleConflict(
             ConflictException ex, HttpServletRequest request) {
-        log.warn("Conflict: {}", ex.getMessage());
+        log.error("Conflict: {}", ex.getMessage());
 
         ErrorResponse errorResponse = new ErrorResponse(
                 HttpStatus.CONFLICT.value(),
@@ -102,7 +102,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleValidationErrors(
             MethodArgumentNotValidException ex, HttpServletRequest request) {
-        log.warn("Validation failed: {} field errors", ex.getFieldErrorCount());
+        log.error("Validation failed: {} field errors", ex.getFieldErrorCount());
 
         List<ErrorResponse.FieldError> fieldErrors = ex.getBindingResult()
                 .getFieldErrors()
@@ -127,7 +127,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(BadCredentialsException.class)
     public ResponseEntity<ErrorResponse> handleBadCredentials(
             BadCredentialsException ex, HttpServletRequest request) {
-        log.warn("Authentication failed: Invalid credentials");
+        log.error("Authentication failed: Invalid credentials");
 
         ErrorResponse errorResponse = new ErrorResponse(
                 HttpStatus.UNAUTHORIZED.value(),
@@ -142,7 +142,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(AuthenticationException.class)
     public ResponseEntity<ErrorResponse> handleAuthenticationException(
             AuthenticationException ex, HttpServletRequest request) {
-        log.warn("Authentication failed: {}", ex.getMessage());
+        log.error("Authentication failed: {}", ex.getMessage());
 
         ErrorResponse errorResponse = new ErrorResponse(
                 HttpStatus.UNAUTHORIZED.value(),

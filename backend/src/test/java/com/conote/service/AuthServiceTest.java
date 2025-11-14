@@ -17,7 +17,6 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
-import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.*;
@@ -65,7 +64,7 @@ class AuthServiceTest {
         when(userRepository.existsByEmail(validRequest.getEmail())).thenReturn(false);
         when(passwordEncoder.encode(validRequest.getPassword())).thenReturn("hashedPassword");
         when(userRepository.save(any(User.class))).thenReturn(testUser);
-        when(jwtUtil.generateToken(validRequest.getEmail())).thenReturn("jwt-token");
+        when(jwtUtil.generateTokenSimple(validRequest.getEmail())).thenReturn("jwt-token");
 
         // Act
         AuthResponse response = authService.register(validRequest);
@@ -77,7 +76,7 @@ class AuthServiceTest {
         verify(userRepository).existsByEmail(validRequest.getEmail());
         verify(passwordEncoder).encode(validRequest.getPassword());
         verify(userRepository).save(any(User.class));
-        verify(jwtUtil).generateToken(validRequest.getEmail());
+        verify(jwtUtil).generateTokenSimple(validRequest.getEmail());
     }
 
     @Test
@@ -111,7 +110,7 @@ class AuthServiceTest {
             assertThat(savedUser.getPasswordHash()).isNotEqualTo(rawPassword);
             return savedUser;
         });
-        when(jwtUtil.generateToken(any())).thenReturn("token");
+        when(jwtUtil.generateTokenSimple(any())).thenReturn("token");
 
         // Act
         authService.register(validRequest);
@@ -126,7 +125,7 @@ class AuthServiceTest {
         // Arrange
         when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
                 .thenReturn(null); // Authentication succeeds
-        when(jwtUtil.generateToken(validRequest.getEmail())).thenReturn("jwt-token");
+        when(jwtUtil.generateTokenSimple(validRequest.getEmail())).thenReturn("jwt-token");
 
         // Act
         AuthResponse response = authService.login(validRequest);
@@ -136,7 +135,7 @@ class AuthServiceTest {
         assertThat(response.getToken()).isEqualTo("jwt-token");
 
         verify(authenticationManager).authenticate(any(UsernamePasswordAuthenticationToken.class));
-        verify(jwtUtil).generateToken(validRequest.getEmail());
+        verify(jwtUtil).generateTokenSimple(validRequest.getEmail());
     }
 
     @Test
@@ -152,7 +151,7 @@ class AuthServiceTest {
                 .hasMessage("Invalid credentials");
 
         verify(authenticationManager).authenticate(any(UsernamePasswordAuthenticationToken.class));
-        verify(jwtUtil, never()).generateToken(any());
+        verify(jwtUtil, never()).generateTokenSimple(any());
     }
 
     @Test
@@ -172,7 +171,7 @@ class AuthServiceTest {
                     assertThat(token.getCredentials()).isEqualTo(password);
                     return null;
                 });
-        when(jwtUtil.generateToken(email)).thenReturn("token");
+        when(jwtUtil.generateTokenSimple(email)).thenReturn("token");
 
         // Act
         authService.login(validRequest);
@@ -192,7 +191,7 @@ class AuthServiceTest {
         when(userRepository.existsByEmail(anyString())).thenReturn(false);
         when(passwordEncoder.encode(anyString())).thenReturn("hashed");
         when(userRepository.save(any(User.class))).thenReturn(testUser);
-        when(jwtUtil.generateToken(validRequest.getEmail())).thenReturn(expectedToken);
+        when(jwtUtil.generateTokenSimple(validRequest.getEmail())).thenReturn(expectedToken);
 
         // Act
         AuthResponse response = authService.register(validRequest);
@@ -213,7 +212,7 @@ class AuthServiceTest {
             assertThat(user.getPasswordHash()).isEqualTo("hashed");
             return user;
         });
-        when(jwtUtil.generateToken(anyString())).thenReturn("token");
+        when(jwtUtil.generateTokenSimple(anyString())).thenReturn("token");
 
         // Act
         authService.register(validRequest);
