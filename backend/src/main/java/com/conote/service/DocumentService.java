@@ -2,9 +2,12 @@ package com.conote.service;
 
 import com.conote.dto.*;
 import com.conote.exception.BadRequestException;
+import com.conote.exception.ForbiddenException;
 import com.conote.exception.ResourceNotFoundException;
 import com.conote.model.Document;
+import com.conote.model.DocumentPermission;
 import com.conote.model.DocumentSearchIndex;
+import com.conote.model.PermissionLevel;
 import com.conote.model.User;
 import com.conote.repository.DocumentRepository;
 import com.conote.repository.DocumentSearchRepository;
@@ -34,6 +37,7 @@ public class DocumentService {
     private final DocumentRepository documentRepository;
     private final DocumentSearchRepository documentSearchRepository;
     private final UserRepository userRepository;
+    private final PermissionService permissionService;
 
     public UUID getCurrentUserId() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -44,13 +48,30 @@ public class DocumentService {
 
     /**
      * Get document tree with Redis caching.
+     * Now includes documents owned by the user AND documents shared with them.
      * Cache is evicted when documents are created, updated, moved, or deleted.
      */
     @Cacheable(value = "documentTree", key = "#root.target.getCurrentUserId()")
     public List<DocumentTreeNode> getDocumentTree() {
         UUID userId = getCurrentUserId();
-        List<Document> documents = documentRepository.findByUserId(userId);
-        return buildTree(documents);
+
+        // Get owned documents
+        List<Document> ownedDocuments = documentRepository.findByUserId(userId);
+
+        // Get shared documents (documents explicitly shared with this user)
+        List<DocumentPermission> permissions = permissionService.getUserPermissions(userId);
+        List<Document> sharedDocuments = permissions.stream()
+                .map(perm -> documentRepository.findById(perm.getDocumentId()))
+                .filter(Optional::isPresent)
+                .map(Optional::get)
+                .collect(Collectors.toList());
+
+        // Combine owned and shared documents
+        List<Document> allDocuments = new ArrayList<>();
+        allDocuments.addAll(ownedDocuments);
+        allDocuments.addAll(sharedDocuments);
+
+        return buildTree(allDocuments);
     }
 
     private List<DocumentTreeNode> buildTree(List<Document> documents) {
@@ -88,7 +109,13 @@ public class DocumentService {
 
     public Document getDocument(UUID id) {
         UUID userId = getCurrentUserId();
-        return documentRepository.findByIdAndUserId(id, userId)
+
+        // Check if user has at least VIEWER permission
+        if (!permissionService.hasPermission(id, userId, PermissionLevel.VIEWER)) {
+            throw new ForbiddenException("You don't have permission to view this document");
+        }
+
+        return documentRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Document", "id", id));
     }
 
@@ -97,10 +124,15 @@ public class DocumentService {
     public Document createDocument(CreateDocumentRequest request) {
         UUID userId = getCurrentUserId();
 
-        // Verify parent exists if parentId is provided
+        // Verify parent exists and user has EDITOR permission if parentId is provided
         if (request.getParentId() != null) {
-            documentRepository.findByIdAndUserId(request.getParentId(), userId)
+            Document parent = documentRepository.findById(request.getParentId())
                     .orElseThrow(() -> new ResourceNotFoundException("Parent document", "id", request.getParentId()));
+
+            // Check if user has EDITOR permission on parent (required to create children)
+            if (!permissionService.hasPermission(request.getParentId(), userId, PermissionLevel.EDITOR)) {
+                throw new ForbiddenException("You don't have permission to create documents under this parent");
+            }
         }
 
         Document document = new Document();
@@ -123,7 +155,13 @@ public class DocumentService {
     @CacheEvict(value = "documentTree", key = "#root.target.getCurrentUserId()")
     public Document updateDocument(UUID id, UpdateDocumentRequest request) {
         UUID userId = getCurrentUserId();
-        Document document = documentRepository.findByIdAndUserId(id, userId)
+
+        // Check if user has EDITOR permission
+        if (!permissionService.hasPermission(id, userId, PermissionLevel.EDITOR)) {
+            throw new ForbiddenException("You don't have permission to edit this document");
+        }
+
+        Document document = documentRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Document", "id", id));
 
         if (request.getTitle() != null) {
@@ -147,13 +185,24 @@ public class DocumentService {
     @CacheEvict(value = "documentTree", key = "#root.target.getCurrentUserId()")
     public void moveDocument(UUID id, MoveDocumentRequest request) {
         UUID userId = getCurrentUserId();
-        Document document = documentRepository.findByIdAndUserId(id, userId)
+
+        // Only owner can move documents
+        if (!permissionService.isOwner(id, userId)) {
+            throw new ForbiddenException("Only the document owner can move documents");
+        }
+
+        Document document = documentRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Document", "id", id));
 
-        // Verify new parent exists if provided
+        // Verify new parent exists and user has EDITOR permission if provided
         if (request.getNewParentId() != null) {
-            documentRepository.findByIdAndUserId(request.getNewParentId(), userId)
+            Document newParent = documentRepository.findById(request.getNewParentId())
                     .orElseThrow(() -> new ResourceNotFoundException("New parent document", "id", request.getNewParentId()));
+
+            // Check if user has EDITOR permission on new parent
+            if (!permissionService.hasPermission(request.getNewParentId(), userId, PermissionLevel.EDITOR)) {
+                throw new ForbiddenException("You don't have permission to move documents to this parent");
+            }
 
             // Check for circular reference
             if (wouldCreateCircularReference(id, request.getNewParentId(), userId)) {
@@ -192,7 +241,13 @@ public class DocumentService {
     @CacheEvict(value = "documentTree", key = "#root.target.getCurrentUserId()")
     public void deleteDocument(UUID id) {
         UUID userId = getCurrentUserId();
-        Document document = documentRepository.findByIdAndUserId(id, userId)
+
+        // Only owner can delete documents
+        if (!permissionService.isOwner(id, userId)) {
+            throw new ForbiddenException("Only the document owner can delete documents");
+        }
+
+        Document document = documentRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Document", "id", id));
 
         documentRepository.delete(document);

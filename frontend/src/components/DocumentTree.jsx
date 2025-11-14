@@ -18,14 +18,16 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { ChevronRight, ChevronDown, MoreVertical, Plus, Edit, Trash2, FileText } from 'lucide-react';
+import { ChevronRight, ChevronDown, MoreVertical, Plus, Edit, Trash2, FileText, Share2, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import ShareDialog from './ShareDialog';
 
 const TreeNode = ({ node, activeDocId, onSelect, onCreateChild, onRename, onDelete, level = 0 }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isRenaming, setIsRenaming] = useState(false);
   const [newTitle, setNewTitle] = useState(node.title);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showShareDialog, setShowShareDialog] = useState(false);
 
   const hasChildren = node.children && node.children.length > 0;
   const isActive = activeDocId === node.id;
@@ -131,6 +133,15 @@ const TreeNode = ({ node, activeDocId, onSelect, onCreateChild, onRename, onDele
               <Edit className="mr-2 h-4 w-4" />
               Rename
             </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowShareDialog(true);
+              }}
+            >
+              <Share2 className="mr-2 h-4 w-4" />
+              Share
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
               className="text-destructive"
@@ -179,6 +190,13 @@ const TreeNode = ({ node, activeDocId, onSelect, onCreateChild, onRename, onDele
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <ShareDialog
+        open={showShareDialog}
+        onOpenChange={setShowShareDialog}
+        documentId={node.id}
+        documentTitle={node.title}
+      />
     </div>
   );
 };
