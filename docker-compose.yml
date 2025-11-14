@@ -59,6 +59,19 @@ services:
     networks:
       - conote-network
 
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.11.0 # Use the same version as ES
+    container_name: conote-kibana
+    ports:
+      - "5601:5601" # This exposes the Kibana UI on port 5601
+    environment:
+      # This points Kibana to your Elasticsearch service
+      - ELASTICSEARCH_HOSTS=http://conote-elasticsearch:9200 
+    networks:
+      - conote-network
+    depends_on:
+      - elasticsearch
+
   # Spring Boot Backend
   backend:
     build:
