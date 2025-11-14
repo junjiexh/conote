@@ -1,6 +1,5 @@
 package com.conote.security;
 
-import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.MalformedJwtException;
 import io.jsonwebtoken.security.SignatureException;
 import org.junit.jupiter.api.BeforeEach;
@@ -31,12 +30,12 @@ class JwtUtilTest {
 
     @Test
     @DisplayName("Should generate valid JWT token")
-    void testGenerateToken() {
+    void testGenerateTokenSimple() {
         // Arrange
         String username = "test@example.com";
 
         // Act
-        String token = jwtUtil.generateToken(username);
+        String token = jwtUtil.generateTokenSimple(username);
 
         // Assert
         assertThat(token).isNotNull();
@@ -46,13 +45,13 @@ class JwtUtilTest {
 
     @Test
     @DisplayName("Should extract username from token")
-    void testExtractUsername() {
+    void testExtractUserId() {
         // Arrange
         String username = "test@example.com";
-        String token = jwtUtil.generateToken(username);
+        String token = jwtUtil.generateTokenSimple(username);
 
         // Act
-        String extractedUsername = jwtUtil.extractUsername(token);
+        String extractedUsername = jwtUtil.extractUserId(token);
 
         // Assert
         assertThat(extractedUsername).isEqualTo(username);
@@ -62,7 +61,7 @@ class JwtUtilTest {
     @DisplayName("Should extract expiration date from token")
     void testExtractExpiration() {
         // Arrange
-        String token = jwtUtil.generateToken("test@example.com");
+        String token = jwtUtil.generateTokenSimple("test@example.com");
 
         // Act
         Date expiration = jwtUtil.extractExpiration(token);
@@ -78,7 +77,7 @@ class JwtUtilTest {
     void testValidateToken_Success() {
         // Arrange
         String username = "test@example.com";
-        String token = jwtUtil.generateToken(username);
+        String token = jwtUtil.generateTokenSimple(username);
         UserDetails userDetails = User.builder()
                 .username(username)
                 .password("password")
@@ -96,7 +95,7 @@ class JwtUtilTest {
     @DisplayName("Should reject token with wrong username")
     void testValidateToken_WrongUsername() {
         // Arrange
-        String token = jwtUtil.generateToken("user1@example.com");
+        String token = jwtUtil.generateTokenSimple("user1@example.com");
         UserDetails userDetails = User.builder()
                 .username("user2@example.com")
                 .password("password")
@@ -118,7 +117,7 @@ class JwtUtilTest {
         ReflectionTestUtils.setField(shortExpirationUtil, "secret", TEST_SECRET);
         ReflectionTestUtils.setField(shortExpirationUtil, "expiration", -1000L); // Expired
 
-        String token = shortExpirationUtil.generateToken("test@example.com");
+        String token = shortExpirationUtil.generateTokenSimple("test@example.com");
 
         UserDetails userDetails = User.builder()
                 .username("test@example.com")
@@ -135,73 +134,73 @@ class JwtUtilTest {
 
     @Test
     @DisplayName("Should throw exception for invalid token format")
-    void testExtractUsername_InvalidToken() {
+    void testExtractUserId_InvalidToken() {
         // Arrange
         String invalidToken = "invalid.token.format";
 
         // Act & Assert
-        assertThatThrownBy(() -> jwtUtil.extractUsername(invalidToken))
+        assertThatThrownBy(() -> jwtUtil.extractUserId(invalidToken))
                 .isInstanceOf(MalformedJwtException.class);
     }
 
     @Test
     @DisplayName("Should throw exception for token with wrong signature")
-    void testExtractUsername_WrongSignature() {
+    void testExtractUserId_WrongSignature() {
         // Arrange
         JwtUtil differentSecretUtil = new JwtUtil();
         ReflectionTestUtils.setField(differentSecretUtil, "secret", "DifferentSecretKeyThatIsAlsoAtLeast256BitsLongForJWTGeneration");
         ReflectionTestUtils.setField(differentSecretUtil, "expiration", TEST_EXPIRATION);
 
-        String token = differentSecretUtil.generateToken("test@example.com");
+        String token = differentSecretUtil.generateTokenSimple("test@example.com");
 
         // Act & Assert - Verify with original util (different secret)
-        assertThatThrownBy(() -> jwtUtil.extractUsername(token))
+        assertThatThrownBy(() -> jwtUtil.extractUserId(token))
                 .isInstanceOf(SignatureException.class);
     }
 
     @Test
     @DisplayName("Should generate different tokens for different users")
-    void testGenerateToken_DifferentUsers() {
+    void testGenerateToken_Simple_DifferentUsers() {
         // Arrange
         String user1 = "user1@example.com";
         String user2 = "user2@example.com";
 
         // Act
-        String token1 = jwtUtil.generateToken(user1);
-        String token2 = jwtUtil.generateToken(user2);
+        String token1 = jwtUtil.generateTokenSimple(user1);
+        String token2 = jwtUtil.generateTokenSimple(user2);
 
         // Assert
         assertThat(token1).isNotEqualTo(token2);
-        assertThat(jwtUtil.extractUsername(token1)).isEqualTo(user1);
-        assertThat(jwtUtil.extractUsername(token2)).isEqualTo(user2);
+        assertThat(jwtUtil.extractUserId(token1)).isEqualTo(user1);
+        assertThat(jwtUtil.extractUserId(token2)).isEqualTo(user2);
     }
 
     @Test
     @DisplayName("Should generate different tokens for same user at different times")
-    void testGenerateToken_DifferentTimes() throws InterruptedException {
+    void testGenerateToken_Simple_DifferentTimes() throws InterruptedException {
         // Arrange
         String username = "test@example.com";
 
         // Act
-        String token1 = jwtUtil.generateToken(username);
+        String token1 = jwtUtil.generateTokenSimple(username);
         Thread.sleep(10); // Small delay to ensure different timestamp
-        String token2 = jwtUtil.generateToken(username);
+        String token2 = jwtUtil.generateTokenSimple(username);
 
         // Assert
         assertThat(token1).isNotEqualTo(token2); // Different issued-at time
-        assertThat(jwtUtil.extractUsername(token1)).isEqualTo(username);
-        assertThat(jwtUtil.extractUsername(token2)).isEqualTo(username);
+        assertThat(jwtUtil.extractUserId(token1)).isEqualTo(username);
+        assertThat(jwtUtil.extractUserId(token2)).isEqualTo(username);
     }
 
     @Test
     @DisplayName("Should handle tokens with special characters in username")
-    void testGenerateToken_SpecialCharacters() {
+    void testGenerateToken_Simple_SpecialCharacters() {
         // Arrange
         String username = "user+test@example.com";
 
         // Act
-        String token = jwtUtil.generateToken(username);
-        String extractedUsername = jwtUtil.extractUsername(token);
+        String token = jwtUtil.generateTokenSimple(username);
+        String extractedUsername = jwtUtil.extractUserId(token);
 
         // Assert
         assertThat(extractedUsername).isEqualTo(username);
@@ -212,7 +211,7 @@ class JwtUtilTest {
     void testTokenNotExpiredImmediately() {
         // Arrange
         String username = "test@example.com";
-        String token = jwtUtil.generateToken(username);
+        String token = jwtUtil.generateTokenSimple(username);
 
         UserDetails userDetails = User.builder()
                 .username(username)
@@ -231,17 +230,17 @@ class JwtUtilTest {
 
     @Test
     @DisplayName("Should reject null token")
-    void testExtractUsername_NullToken() {
+    void testExtractUserId_NullToken() {
         // Act & Assert
-        assertThatThrownBy(() -> jwtUtil.extractUsername(null))
+        assertThatThrownBy(() -> jwtUtil.extractUserId(null))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
     @DisplayName("Should reject empty token")
-    void testExtractUsername_EmptyToken() {
+    void testExtractUserId_EmptyToken() {
         // Act & Assert
-        assertThatThrownBy(() -> jwtUtil.extractUsername(""))
+        assertThatThrownBy(() -> jwtUtil.extractUserId(""))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 }

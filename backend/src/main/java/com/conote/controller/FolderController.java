@@ -215,6 +215,6 @@ public class FolderController {
      */
     private UUID getUserIdFromToken(String authHeader) {
         String token = authHeader.substring(7); // Remove "Bearer " prefix
-        return jwtUtil.getUserIdFromToken(token);
+        return jwtUtil.extractUserUuid(token);
     }
 }

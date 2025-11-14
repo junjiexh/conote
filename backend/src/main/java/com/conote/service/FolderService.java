@@ -2,7 +2,7 @@ package com.conote.service;
 
 import com.conote.exception.BadRequestException;
 import com.conote.exception.ConflictException;
-import com.conote.exception.NotFoundException;
+import com.conote.exception.ResourceNotFoundException;
 import com.conote.model.Document;
 import com.conote.model.Folder;
 import com.conote.repository.DocumentRepository;
@@ -37,11 +37,11 @@ public class FolderService {
      * @param folderId the folder ID
      * @param userId the user's ID
      * @return the folder
-     * @throws NotFoundException if folder not found or doesn't belong to user
+     * @throws ResourceNotFoundException if folder not found or doesn't belong to user
      */
     public Folder getFolderById(UUID folderId, UUID userId) {
         return folderRepository.findByIdAndUserId(folderId, userId)
-            .orElseThrow(() -> new NotFoundException("Folder not found with ID: " + folderId));
+            .orElseThrow(() -> new ResourceNotFoundException("Folder not found with ID: " + folderId));
     }
 
     /**
@@ -99,7 +99,7 @@ public class FolderService {
      * @param userId the user's ID
      * @param newName the new folder name
      * @return the updated folder
-     * @throws NotFoundException if folder not found
+     * @throws ResourceNotFoundException if folder not found
      * @throws ConflictException if new name already exists
      * @throws BadRequestException if trying to rename personal folder
      */
@@ -132,7 +132,7 @@ public class FolderService {
      *
      * @param folderId the folder ID
      * @param userId the user's ID
-     * @throws NotFoundException if folder not found
+     * @throws ResourceNotFoundException if folder not found
      * @throws BadRequestException if trying to delete personal folder
      */
     @Transactional
@@ -161,7 +161,7 @@ public class FolderService {
      * @param folderId the folder ID
      * @param userId the user's ID
      * @return list of documents
-     * @throws NotFoundException if folder not found
+     * @throws ResourceNotFoundException if folder not found
      */
     public List<Document> getDocumentsInFolder(UUID folderId, UUID userId) {
         // Verify folder belongs to user
