@@ -32,6 +32,7 @@ public class AuthService {
     private final AuthenticationManager authenticationManager;
     private final PasswordValidator passwordValidator;
     private final AuditLogService auditLogService;
+    private final FolderService folderService;
 
     private static final int MAX_FAILED_ATTEMPTS = 5;
     private static final long LOCK_DURATION_MINUTES = 30;
@@ -67,6 +68,9 @@ public class AuthService {
         user.setLastLoginAt(LocalDateTime.now());
 
         userRepository.save(user);
+
+        // Create default "personal" folder for the new user
+        folderService.createDefaultPersonalFolder(user.getId());
 
         // Audit log: successful registration
         auditLogService.logSuccess(

@@ -15,6 +15,7 @@ import java.util.UUID;
 public class DocumentTreeNode {
     private UUID id;
     private UUID parentId;
+    private UUID folderId;
     private String title;
     private String content;
     private LocalDateTime createdAt;
