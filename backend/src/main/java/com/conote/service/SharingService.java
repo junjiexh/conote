@@ -114,8 +114,8 @@ public class SharingService {
         ownerResponse.setEmail(owner.getEmail());
         ownerResponse.setName(owner.getEmail()); // Use email as name for now
         ownerResponse.setPermissionLevel(PermissionLevel.EDITOR); // Owner has full access
-        ownerResponse.setIsOwner(true);
-        ownerResponse.setIsInherited(false);
+        ownerResponse.setOwner(true);
+        ownerResponse.setInherited(false);
         collaborators.add(ownerResponse);
 
         // Add users with explicit permissions
@@ -128,8 +128,8 @@ public class SharingService {
                 response.setEmail(user.getEmail());
                 response.setName(user.getEmail());
                 response.setPermissionLevel(perm.getPermissionLevel());
-                response.setIsOwner(false);
-                response.setIsInherited(perm.getIsInherited());
+                response.setOwner(false);
+                response.setInherited(perm.getIsInherited());
                 response.setGrantedBy(perm.getGrantedBy());
                 response.setGrantedByEmail(getUserEmail(perm.getGrantedBy()));
                 response.setGrantedAt(perm.getGrantedAt());
@@ -181,7 +181,7 @@ public class SharingService {
         response.setPermissionLevel(permission.getPermissionLevel());
         response.setGrantedBy(permission.getGrantedBy());
         response.setGrantedByEmail(grantedByEmail);
-        response.setIsInherited(permission.getIsInherited());
+        response.setInherited(permission.getIsInherited());
         response.setGrantedAt(permission.getGrantedAt());
         response.setUpdatedAt(permission.getUpdatedAt());
         return response;
