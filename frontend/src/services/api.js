@@ -58,4 +58,18 @@ export const documentAPI = {
     api.post('/documents/search', { query, page, size }),
 };
 
+// Sharing API
+export const sharingAPI = {
+  shareDocument: (documentId, email, permissionLevel) =>
+    api.post('/sharing/share', { documentId, email, permissionLevel }),
+  revokePermission: (documentId, userId) =>
+    api.delete('/sharing/revoke', { data: { documentId, userId } }),
+  getCollaborators: (documentId) =>
+    api.get(`/sharing/document/${documentId}/collaborators`),
+  getPermissions: (documentId) =>
+    api.get(`/sharing/document/${documentId}/permissions`),
+  checkAccess: (documentId) =>
+    api.get(`/sharing/document/${documentId}/check-access`),
+};
+
 export default api;
