@@ -77,66 +77,66 @@ public class PasswordValidator {
         }
 
         // Check for uppercase letter
-        if (!UPPERCASE_PATTERN.matcher(password).find()) {
-            result.setValid(false);
-            result.addError("Password must contain at least one uppercase letter (A-Z)");
-            result.addSuggestion("Add uppercase letters to strengthen your password");
-        } else {
-            score++;
-        }
-
-        // Check for lowercase letter
-        if (!LOWERCASE_PATTERN.matcher(password).find()) {
-            result.setValid(false);
-            result.addError("Password must contain at least one lowercase letter (a-z)");
-            result.addSuggestion("Add lowercase letters to strengthen your password");
-        } else {
-            score++;
-        }
-
-        // Check for digit
-        if (!DIGIT_PATTERN.matcher(password).find()) {
-            result.setValid(false);
-            result.addError("Password must contain at least one digit (0-9)");
-            result.addSuggestion("Add numbers to strengthen your password");
-        } else {
-            score++;
-        }
-
-        // Check for special character
-        if (!SPECIAL_CHAR_PATTERN.matcher(password).find()) {
-            result.setValid(false);
-            result.addError("Password must contain at least one special character (!@#$%^&*...)");
-            result.addSuggestion("Add special characters like !@#$%^&* for better security");
-        } else {
-            score++;
-        }
-
-        // Check against common passwords
-        if (COMMON_PASSWORDS.contains(password.toLowerCase())) {
-            result.setValid(false);
-            result.addError("Password is too common and easily guessable");
-            result.addSuggestion("Choose a unique password that's not commonly used");
-            score = 0;
-        }
-
-        // Bonus point for length > 12
-        if (password.length() >= 12) {
-            score++;
-        }
-
-        result.setScore(Math.min(score, 5));
-
-        // Add general suggestions if valid
-        if (result.isValid()) {
-            if (score < 5) {
-                result.addSuggestion("Consider making your password longer for increased security");
-            }
-            if (score == 5) {
-                result.addSuggestion("Strong password! Your password meets all security requirements");
-            }
-        }
-
+//        if (!UPPERCASE_PATTERN.matcher(password).find()) {
+//            result.setValid(false);
+//            result.addError("Password must contain at least one uppercase letter (A-Z)");
+//            result.addSuggestion("Add uppercase letters to strengthen your password");
+//        } else {
+//            score++;
+//        }
+//
+//        // Check for lowercase letter
+//        if (!LOWERCASE_PATTERN.matcher(password).find()) {
+//            result.setValid(false);
+//            result.addError("Password must contain at least one lowercase letter (a-z)");
+//            result.addSuggestion("Add lowercase letters to strengthen your password");
+//        } else {
+//            score++;
+//        }
+//
+//        // Check for digit
+//        if (!DIGIT_PATTERN.matcher(password).find()) {
+//            result.setValid(false);
+//            result.addError("Password must contain at least one digit (0-9)");
+//            result.addSuggestion("Add numbers to strengthen your password");
+//        } else {
+//            score++;
+//        }
+//
+//        // Check for special character
+//        if (!SPECIAL_CHAR_PATTERN.matcher(password).find()) {
+//            result.setValid(false);
+//            result.addError("Password must contain at least one special character (!@#$%^&*...)");
+//            result.addSuggestion("Add special characters like !@#$%^&* for better security");
+//        } else {
+//            score++;
+//        }
+//
+//        // Check against common passwords
+//        if (COMMON_PASSWORDS.contains(password.toLowerCase())) {
+//            result.setValid(false);
+//            result.addError("Password is too common and easily guessable");
+//            result.addSuggestion("Choose a unique password that's not commonly used");
+//            score = 0;
+//        }
+//
+//        // Bonus point for length > 12
+//        if (password.length() >= 12) {
+//            score++;
+//        }
+//
+//        result.setScore(Math.min(score, 5));
+//
+//        // Add general suggestions if valid
+//        if (result.isValid()) {
+//            if (score < 5) {
+//                result.addSuggestion("Consider making your password longer for increased security");
+//            }
+//            if (score == 5) {
+//                result.addSuggestion("Strong password! Your password meets all security requirements");
+//            }
+//        }
+//
         return result;
     }
 

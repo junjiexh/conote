@@ -4,6 +4,7 @@ import { documentAPI } from '../services/api';
 import DocumentTree from '../components/DocumentTree';
 import Editor from '../components/Editor';
 import SearchDialog from '../components/SearchDialog';
+import { UserSidebar } from '../components/UserSidebar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -16,7 +17,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
-import { LogOut, Loader2, Search } from 'lucide-react';
+import { User, Loader2, Search } from 'lucide-react';
 
 const Dashboard = () => {
   const [tree, setTree] = useState([]);
@@ -27,6 +28,7 @@ const Dashboard = () => {
   const [newDocTitle, setNewDocTitle] = useState('');
   const [createParentId, setCreateParentId] = useState(null);
   const [showSearchDialog, setShowSearchDialog] = useState(false);
+  const [showUserSidebar, setShowUserSidebar] = useState(false);
   const { logout } = useAuth();
 
   useEffect(() => {
@@ -148,10 +150,11 @@ const Dashboard = () => {
             </Button>
             <Button
               variant="outline"
-              onClick={handleLogout}
+              size="icon"
+              onClick={() => setShowUserSidebar(true)}
+              aria-label="User menu"
             >
-              <LogOut className="mr-2 h-4 w-4" />
-              Logout
+              <User className="h-4 w-4" />
             </Button>
           </div>
         </div>
@@ -221,6 +224,11 @@ const Dashboard = () => {
         open={showSearchDialog}
         onOpenChange={setShowSearchDialog}
         onSelectDocument={handleSearchResultSelect}
+      />
+
+      <UserSidebar
+        open={showUserSidebar}
+        onOpenChange={setShowUserSidebar}
       />
     </div>
   );
