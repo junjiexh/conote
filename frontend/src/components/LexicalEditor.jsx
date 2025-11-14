@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback } from 'react';
+import React, { useEffect, useCallback, useMemo } from 'react';
 import { LexicalComposer } from '@lexical/react/LexicalComposer';
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin';
 import { ContentEditable } from '@lexical/react/LexicalContentEditable';
@@ -171,7 +171,7 @@ function UpdatePlugin({ value }) {
 }
 
 const LexicalEditor = ({ value, onChange, placeholder, className }) => {
-  const initialConfig = {
+  const initialConfig = useMemo(() => ({
     namespace: 'ConoteEditor',
     nodes: [
       HeadingNode,
@@ -210,7 +210,7 @@ const LexicalEditor = ({ value, onChange, placeholder, className }) => {
     onError: (error) => {
       console.error('Lexical error:', error);
     },
-  };
+  }), []);
 
   const handleChange = (editorState, editor) => {
     editorState.read(() => {
