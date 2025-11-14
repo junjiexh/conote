@@ -93,6 +93,7 @@ const Editor = ({ document, onSave }) => {
 
       <div className="flex-1 overflow-hidden px-4 pb-4">
         <LexicalEditor
+          key={document?.id}
           className="w-full h-full text-base"
           value={content}
           onChange={(newContent) => setContent(newContent)}
