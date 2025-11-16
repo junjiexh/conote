@@ -1,0 +1,173 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kong-configure-script
+  namespace: conote
+data:
+  configure.sh: |
+    #!/bin/sh
+    set -e
+
+    KONG_ADMIN_URL="http://kong-admin:8001"
+
+    # Wait for Kong Admin API to be ready
+    echo "Waiting for Kong Admin API..."
+    until curl -s -f "${KONG_ADMIN_URL}/status" > /dev/null; do
+      echo "Kong Admin API not ready, waiting..."
+      sleep 5
+    done
+    echo "Kong Admin API is ready!"
+
+    # Create Backend Service
+    echo "Creating backend service..."
+    curl -i -X POST "${KONG_ADMIN_URL}/services" \
+      -d "name=conote-backend" \
+      -d "url=http://backend.conote.svc.cluster.local:8080" \
+      -d "retries=3" \
+      -d "connect_timeout=60000" \
+      -d "write_timeout=60000" \
+      -d "read_timeout=60000" || true
+
+    # Create Routes
+    echo "Creating routes..."
+
+    # Auth routes (public - no JWT)
+    curl -i -X POST "${KONG_ADMIN_URL}/services/conote-backend/routes" \
+      -d "name=auth-routes" \
+      -d "paths[]=/api/auth" \
+      -d "strip_path=false" \
+      -d "methods[]=GET" \
+      -d "methods[]=POST" \
+      -d "methods[]=OPTIONS" || true
+
+    # Health check route (public)
+    curl -i -X POST "${KONG_ADMIN_URL}/services/conote-backend/routes" \
+      -d "name=health-route" \
+      -d "paths[]=/actuator/health" \
+      -d "paths[]=/actuator/prometheus" \
+      -d "strip_path=false" \
+      -d "methods[]=GET" || true
+
+    # Documents routes (protected with JWT)
+    curl -i -X POST "${KONG_ADMIN_URL}/services/conote-backend/routes" \
+      -d "name=documents-routes" \
+      -d "paths[]=/api/documents" \
+      -d "strip_path=false" \
+      -d "methods[]=GET" \
+      -d "methods[]=POST" \
+      -d "methods[]=PUT" \
+      -d "methods[]=PATCH" \
+      -d "methods[]=DELETE" \
+      -d "methods[]=OPTIONS" || true
+
+    # Sharing routes (protected with JWT)
+    curl -i -X POST "${KONG_ADMIN_URL}/services/conote-backend/routes" \
+      -d "name=sharing-routes" \
+      -d "paths[]=/api/sharing" \
+      -d "strip_path=false" \
+      -d "methods[]=GET" \
+      -d "methods[]=POST" \
+      -d "methods[]=PUT" \
+      -d "methods[]=DELETE" \
+      -d "methods[]=OPTIONS" || true
+
+    # Folders routes (protected with JWT)
+    curl -i -X POST "${KONG_ADMIN_URL}/services/conote-backend/routes" \
+      -d "name=folders-routes" \
+      -d "paths[]=/api/folders" \
+      -d "strip_path=false" \
+      -d "methods[]=GET" \
+      -d "methods[]=POST" \
+      -d "methods[]=PUT" \
+      -d "methods[]=DELETE" \
+      -d "methods[]=OPTIONS" || true
+
+    # Enable JWT plugin on protected routes
+    echo "Configuring JWT plugin for protected routes..."
+
+    for route in documents-routes sharing-routes folders-routes; do
+      curl -i -X POST "${KONG_ADMIN_URL}/routes/${route}/plugins" \
+        -d "name=jwt" \
+        -d "config.claims_to_verify=exp" \
+        -d "config.header_names=Authorization" \
+        -d "config.key_claim_name=kid" || true
+    done
+
+    # Enable CORS plugin globally
+    echo "Enabling CORS plugin..."
+    curl -i -X POST "${KONG_ADMIN_URL}/plugins" \
+      -d "name=cors" \
+      -d "config.origins=*" \
+      -d "config.methods=GET" \
+      -d "config.methods=POST" \
+      -d "config.methods=PUT" \
+      -d "config.methods=PATCH" \
+      -d "config.methods=DELETE" \
+      -d "config.methods=OPTIONS" \
+      -d "config.headers=Accept" \
+      -d "config.headers=Accept-Version" \
+      -d "config.headers=Content-Length" \
+      -d "config.headers=Content-Type" \
+      -d "config.headers=Date" \
+      -d "config.headers=Authorization" \
+      -d "config.exposed_headers=X-Auth-Token" \
+      -d "config.credentials=true" \
+      -d "config.max_age=3600" || true
+
+    # Enable rate limiting
+    echo "Enabling rate limiting..."
+    curl -i -X POST "${KONG_ADMIN_URL}/plugins" \
+      -d "name=rate-limiting" \
+      -d "config.minute=100" \
+      -d "config.hour=1000" \
+      -d "config.policy=local" || true
+
+    # Enable request size limiting
+    echo "Enabling request size limiting..."
+    curl -i -X POST "${KONG_ADMIN_URL}/plugins" \
+      -d "name=request-size-limiting" \
+      -d "config.allowed_payload_size=10" || true
+
+    # Create JWT consumer (for validation)
+    echo "Creating JWT consumer..."
+    curl -i -X POST "${KONG_ADMIN_URL}/consumers" \
+      -d "username=conote-backend-issuer" || true
+
+    # Add JWT credential to consumer
+    echo "Adding JWT credential to consumer..."
+    curl -i -X POST "${KONG_ADMIN_URL}/consumers/conote-backend-issuer/jwt" \
+      -d "key=conote-jwt-key" \
+      -d "algorithm=HS256" \
+      -d "secret=your-secret-key-change-this-in-production-make-it-at-least-256-bits-long-for-security-purposes" || true
+
+    echo "Kong configuration completed successfully!"
+
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: kong-configure
+  namespace: conote
+  labels:
+    app: kong-configure
+spec:
+  ttlSecondsAfterFinished: 100
+  template:
+    metadata:
+      labels:
+        app: kong-configure
+    spec:
+      restartPolicy: OnFailure
+      containers:
+      - name: configure
+        image: curlimages/curl:8.1.2
+        command: ["/bin/sh", "/scripts/configure.sh"]
+        volumeMounts:
+        - name: script
+          mountPath: /scripts
+      volumes:
+      - name: script
+        configMap:
+          name: kong-configure-script
+          defaultMode: 0755

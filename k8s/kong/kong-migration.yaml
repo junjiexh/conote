@@ -1,0 +1,45 @@
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: kong-migration
+  namespace: conote
+  labels:
+    app: kong-migration
+spec:
+  template:
+    metadata:
+      labels:
+        app: kong-migration
+    spec:
+      restartPolicy: OnFailure
+      initContainers:
+      - name: wait-for-postgres
+        image: busybox:1.28
+        command: ['sh', '-c', 'until nc -z kong-postgres 5432; do echo waiting for kong-postgres; sleep 2; done;']
+      containers:
+      - name: kong-migration
+        image: kong:3.4
+        env:
+        - name: KONG_DATABASE
+          value: postgres
+        - name: KONG_PG_HOST
+          value: kong-postgres
+        - name: KONG_PG_PORT
+          value: "5432"
+        - name: KONG_PG_USER
+          valueFrom:
+            secretKeyRef:
+              name: kong-postgres-secret
+              key: POSTGRES_USER
+        - name: KONG_PG_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: kong-postgres-secret
+              key: POSTGRES_PASSWORD
+        - name: KONG_PG_DATABASE
+          valueFrom:
+            secretKeyRef:
+              name: kong-postgres-secret
+              key: POSTGRES_DB
+        command: ["kong", "migrations", "bootstrap"]

@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: conote
+  labels:
+    name: conote
+    environment: production
