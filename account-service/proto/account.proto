@@ -1,0 +1,115 @@
+syntax = "proto3";
+
+package account;
+
+option go_package = "github.com/junjiexh/conote/account-service/pkg/grpc";
+option java_package = "com.conote.grpc.account";
+option java_outer_classname = "AccountProto";
+option java_multiple_files = true;
+
+service AccountService {
+  // Authentication
+  rpc Register(RegisterRequest) returns (RegisterResponse);
+  rpc Login(LoginRequest) returns (LoginResponse);
+  rpc ValidateToken(ValidateTokenRequest) returns (ValidateTokenResponse);
+
+  // Password Management
+  rpc RequestPasswordReset(PasswordResetRequest) returns (PasswordResetResponse);
+  rpc ConfirmPasswordReset(PasswordResetConfirmRequest) returns (PasswordResetConfirmResponse);
+
+  // User Management
+  rpc GetUser(GetUserRequest) returns (GetUserResponse);
+  rpc UpdateUser(UpdateUserRequest) returns (UpdateUserResponse);
+}
+
+// Register Messages
+message RegisterRequest {
+  string email = 1;
+  string password = 2;
+}
+
+message RegisterResponse {
+  bool success = 1;
+  string message = 2;
+  string token = 3;
+  UserInfo user = 4;
+}
+
+// Login Messages
+message LoginRequest {
+  string email = 1;
+  string password = 2;
+}
+
+message LoginResponse {
+  bool success = 1;
+  string message = 2;
+  string token = 3;
+  UserInfo user = 4;
+}
+
+// Token Validation Messages
+message ValidateTokenRequest {
+  string token = 1;
+}
+
+message ValidateTokenResponse {
+  bool valid = 1;
+  string user_id = 2;
+  string email = 3;
+  string role = 4;
+  string message = 5;
+}
+
+// Password Reset Messages
+message PasswordResetRequest {
+  string email = 1;
+}
+
+message PasswordResetResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message PasswordResetConfirmRequest {
+  string token = 1;
+  string new_password = 2;
+}
+
+message PasswordResetConfirmResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+// User Management Messages
+message GetUserRequest {
+  string user_id = 1;
+}
+
+message GetUserResponse {
+  bool success = 1;
+  string message = 2;
+  UserInfo user = 3;
+}
+
+message UpdateUserRequest {
+  string user_id = 1;
+  string email = 2;
+  string role = 3;
+}
+
+message UpdateUserResponse {
+  bool success = 1;
+  string message = 2;
+  UserInfo user = 3;
+}
+
+// Common Messages
+message UserInfo {
+  string id = 1;
+  string email = 2;
+  string role = 3;
+  string created_at = 4;
+  string last_login_at = 5;
+  bool account_locked = 6;
+}

@@ -72,80 +72,37 @@ services:
     depends_on:
       - elasticsearch
 
-  # Kong PostgreSQL (separate database for Kong configuration)
-  kong-postgres:
-    image: postgres:15-alpine
-    container_name: conote-kong-postgres
+  # Account Service (Go gRPC)
+  account-service:
+    build:
+      context: ./account-service
+      dockerfile: Dockerfile
+    container_name: conote-account-service
     environment:
-      POSTGRES_DB: kong
-      POSTGRES_USER: kong
-      POSTGRES_PASSWORD: kong_password
-    volumes:
-      - kong_postgres_data:/var/lib/postgresql/data
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: ${POSTGRES_USER:-postgres}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      DB_NAME: ${POSTGRES_DB:-conote}
+      DB_SSLMODE: disable
+      JWT_SECRET: ${JWT_SECRET:-your-secret-key-change-this-in-production-make-it-at-least-256-bits-long}
+      JWT_EXPIRATION_HOURS: 24
+      SERVER_PORT: 50051
+      SERVER_HOST: 0.0.0.0
+      MAX_FAILED_ATTEMPTS: 5
+      LOCKOUT_DURATION_MINUTES: 30
+      PASSWORD_MIN_LENGTH: 8
     ports:
-      - "5433:5432"
+      - "50051:50051"
+    depends_on:
+      postgres:
+        condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U kong"]
+      test: ["CMD", "nc", "-z", "localhost", "50051"]
       interval: 10s
       timeout: 5s
       retries: 5
-    networks:
-      - conote-network
-
-  # Kong Migrations (bootstrap Kong database)
-  kong-migrations:
-    image: kong:3.4
-    container_name: conote-kong-migrations
-    command: kong migrations bootstrap
-    environment:
-      KONG_DATABASE: postgres
-      KONG_PG_HOST: kong-postgres
-      KONG_PG_PORT: 5432
-      KONG_PG_DATABASE: kong
-      KONG_PG_USER: kong
-      KONG_PG_PASSWORD: kong_password
-    depends_on:
-      kong-postgres:
-        condition: service_healthy
-    networks:
-      - conote-network
-    restart: on-failure
-
-  # Kong API Gateway
-  kong:
-    image: kong:3.4
-    container_name: conote-kong
-    environment:
-      KONG_DATABASE: postgres
-      KONG_PG_HOST: kong-postgres
-      KONG_PG_PORT: 5432
-      KONG_PG_DATABASE: kong
-      KONG_PG_USER: kong
-      KONG_PG_PASSWORD: kong_password
-      KONG_PROXY_ACCESS_LOG: /dev/stdout
-      KONG_ADMIN_ACCESS_LOG: /dev/stdout
-      KONG_PROXY_ERROR_LOG: /dev/stderr
-      KONG_ADMIN_ERROR_LOG: /dev/stderr
-      KONG_ADMIN_LISTEN: "0.0.0.0:8001, 0.0.0.0:8444 ssl"
-      KONG_DECLARATIVE_CONFIG: /kong/declarative/kong.yml
-    volumes:
-      - ./kong/kong.yml:/kong/declarative/kong.yml:ro
-    ports:
-      - "8000:8000"  # Kong proxy HTTP
-      - "8443:8443"  # Kong proxy HTTPS
-      - "8001:8001"  # Kong admin API HTTP
-      - "8444:8444"  # Kong admin API HTTPS
-    depends_on:
-      kong-migrations:
-        condition: service_completed_successfully
-      kong-postgres:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "kong", "health"]
-      interval: 10s
-      timeout: 10s
-      retries: 5
-      start_period: 30s
+      start_period: 10s
     networks:
       - conote-network
 
@@ -164,7 +121,7 @@ services:
       SPRING_ELASTICSEARCH_URIS: http://elasticsearch:9200
       JWT_SECRET: ${JWT_SECRET:-your-secret-key-change-this-in-production-make-it-at-least-256-bits-long}
       JWT_EXPIRATION: ${JWT_EXPIRATION:-86400000}
-      USE_KONG_AUTH: ${USE_KONG_AUTH:-true}  # Set to true to use Kong, false for direct JWT
+      ACCOUNT_SERVICE_GRPC_ADDRESS: static://account-service:50051
     ports:
       - "8080:8080"
     depends_on:
@@ -174,7 +131,7 @@ services:
         condition: service_healthy
       elasticsearch:
         condition: service_healthy
-      kong:
+      account-service:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/actuator/health"]
@@ -214,6 +171,4 @@ volumes:
   redis_data:
     driver: local
   elasticsearch_data:
-    driver: local
-  kong_postgres_data:
     driver: local
