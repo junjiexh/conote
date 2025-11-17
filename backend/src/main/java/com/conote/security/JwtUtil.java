@@ -80,9 +80,13 @@ public class JwtUtil {
     }
 
     private String createToken(Map<String, Object> claims, String subject) {
+        // Add email to claims for Kong to extract
+        claims.put("email", subject);
+
         return Jwts.builder()
                 .claims(claims)
                 .subject(subject)
+                .issuer("conote-issuer")  // Required for Kong JWT plugin validation
                 .issuedAt(new Date(System.currentTimeMillis()))
                 .expiration(new Date(System.currentTimeMillis() + expiration))
                 .signWith(getSigningKey(), Jwts.SIG.HS256)

@@ -33,6 +33,11 @@ A full-stack web application for creating and managing hierarchical documents wi
 - **HTTP Client**: Axios
 - **Styling**: Tailwind CSS
 
+### API Gateway (Kubernetes Deployment)
+- **Kong Gateway 3.4**: Handles JWT authentication, rate limiting, and CORS
+- **Kong PostgreSQL**: Configuration storage
+- **Plugins**: JWT, Request Transformer, CORS, Rate Limiting
+
 ## Architecture
 
 ### Database Schema
@@ -201,6 +206,73 @@ npm run dev
 
 The frontend will start on `http://localhost:3000`
 
+### Kubernetes Deployment with Kong API Gateway
+
+For production deployments, Conote can be deployed to Kubernetes with Kong API Gateway handling all JWT authentication, allowing backend services to focus on business logic.
+
+#### Prerequisites
+- Kubernetes cluster (Kind, Minikube, or cloud provider)
+- kubectl configured
+- Docker for building images
+
+#### Deploy to Kubernetes
+
+1. **Deploy Kong API Gateway**:
+```bash
+# Deploy Kong with PostgreSQL and JWT authentication
+./scripts/deploy-kong.sh
+```
+
+2. **Configure JWT Secret** (must match backend):
+```bash
+# Update Kong's JWT secret to match backend
+./scripts/update-kong-jwt-secret.sh "your-jwt-secret-here"
+```
+
+3. **Deploy Backend and Database**:
+```bash
+# Deploy PostgreSQL, Redis, Elasticsearch, and Backend
+kubectl apply -f k8s/postgres-cm1-configmap.yaml
+kubectl apply -f k8s/postgres-deployment.yaml
+kubectl apply -f k8s/postgres-service.yaml
+kubectl apply -f k8s/redis-deployment.yaml
+kubectl apply -f k8s/redis-service.yaml
+kubectl apply -f k8s/elasticsearch-deployment.yaml
+kubectl apply -f k8s/elasticsearch-service.yaml
+kubectl apply -f k8s/backend-deployment.yaml
+kubectl apply -f k8s/backend-service.yaml
+```
+
+4. **Deploy Frontend**:
+```bash
+kubectl apply -f k8s/frontend-deployment.yaml
+kubectl apply -f k8s/frontend-service.yaml
+```
+
+5. **Access the Application**:
+- Frontend: http://localhost:30000
+- Backend (via Kong): http://localhost:30080
+- Kong Admin API: `kubectl port-forward svc/kong-admin 8001:8001`
+
+#### Kong Authentication Flow
+
+1. User logs in via Kong → `/api/auth/login`
+2. Backend generates JWT with `iss: conote-issuer`
+3. Frontend stores JWT and includes in `Authorization: Bearer <token>` header
+4. Kong validates JWT signature and expiration
+5. Kong extracts `userId` and `email` claims
+6. Kong injects `X-User-Id` and `X-User-Email` headers
+7. Backend trusts Kong's headers and loads user context
+
+**Benefits**:
+- ✅ Backend services focus on business logic
+- ✅ Centralized authentication at API Gateway
+- ✅ Rate limiting and request size limiting
+- ✅ CORS handling
+- ✅ Easy to add new protected routes
+
+For detailed Kong configuration and troubleshooting, see [k8s/kong/README.md](k8s/kong/README.md).
+
 ## Usage
 
 1. Open your browser and navigate to `http://localhost:3000`
@@ -248,10 +320,15 @@ conote/
 ## Security Features
 
 - Password hashing with BCrypt
-- JWT-based authentication
-- Protected API endpoints
+- JWT-based authentication (HS256 algorithm)
+- Protected API endpoints with Spring Security
 - CORS configuration for frontend-backend communication
 - User data isolation (users can only access their own documents)
+- **Kong Gateway (Kubernetes)**:
+  - Centralized JWT validation at API Gateway level
+  - Rate limiting (100 requests/min, 1000/hour)
+  - Request size limiting (10MB)
+  - Automatic header injection for user context
 
 ## Future Enhancements
 
