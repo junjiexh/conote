@@ -1,9 +1,9 @@
 .PHONY: proto build run clean
 
 proto:
-	protoc --go_out=. --go_opt=module=github.com/junjiexh/conote/account-service \
+	protoc -I=../proto --go_out=. --go_opt=module=github.com/junjiexh/conote/account-service \
 		--go-grpc_out=. --go-grpc_opt=module=github.com/junjiexh/conote/account-service \
-		proto/account.proto
+		account/account.proto
 
 build:
 	go build -o bin/account-service ./cmd/server
