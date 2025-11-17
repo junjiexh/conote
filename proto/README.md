@@ -12,23 +12,35 @@ proto/
 
 ## Usage
 
-### Go (account-service)
+### Quick Start (All Languages)
 
 ```bash
-cd account-service
-make proto
+cd proto
+make        # Generate code for all languages (Go + Java)
 ```
 
+### Individual Languages
+
+**Go (account-service):**
+```bash
+cd proto
+make go
+```
 Generates to: `account-service/pkg/grpc/`
 
-### Java (backend)
+**Java (backend):**
+```bash
+cd proto
+make java
+```
+Generates to: `backend/target/generated-sources/protobuf/`
+
+### Other Commands
 
 ```bash
-cd backend
-mvn generate-sources
+make clean  # Remove all generated code
+make help   # Show all available commands
 ```
-
-Generates to: `backend/target/generated-sources/protobuf/`
 
 ## Adding New Proto Files
 
