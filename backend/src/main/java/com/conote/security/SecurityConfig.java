@@ -30,10 +30,16 @@ public class SecurityConfig {
     private CustomUserDetailsService userDetailsService;
 
     @Autowired
+    private JwtAuthenticationFilter jwtAuthenticationFilter;
+
+    @Autowired
     private KongHeaderAuthenticationFilter kongHeaderAuthenticationFilter;
 
     @Value("${cors.allowed-origins}")
     private String allowedOrigins;
+
+    @Value("${use.kong.auth:false}")
+    private boolean useKongAuth;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -47,8 +53,16 @@ public class SecurityConfig {
             .sessionManagement(session -> session
                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             )
-            .authenticationProvider(authenticationProvider())
-            .addFilterBefore(kongHeaderAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+            .authenticationProvider(authenticationProvider());
+
+        // Conditionally add the appropriate authentication filter
+        if (useKongAuth) {
+            // Use Kong header-based authentication (for Kubernetes/Kong deployments)
+            http.addFilterBefore(kongHeaderAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+        } else {
+            // Use direct JWT authentication (for local development without Kong)
+            http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+        }
 
         return http.build();
     }

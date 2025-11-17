@@ -85,7 +85,7 @@ CREATE TABLE documents (
 
 ### Quick Start with Docker (Recommended)
 
-The easiest way to run Conote is using Docker Compose. This will start all services (database, backend, and frontend) with a single command.
+The easiest way to run Conote is using Docker Compose. This will start all services including Kong API Gateway for authentication.
 
 #### Prerequisites
 - Docker Desktop or Docker Engine 20.10+
@@ -99,36 +99,87 @@ git clone <repository-url>
 cd conote
 ```
 
-2. (Optional) Customize environment variables:
+2. Configure environment variables:
 ```bash
 cp .env.example .env
-# Edit .env with your preferred settings
+# Edit .env if needed (defaults work for local development)
 ```
 
-3. Start all services:
+3. Start all services (including Kong Gateway):
 ```bash
 docker-compose up -d
 ```
 
-4. Access the application:
-- Frontend: http://localhost:3000
-- Backend API: http://localhost:8080
-- PostgreSQL: localhost:5432
+This starts:
+- PostgreSQL (app database)
+- Kong PostgreSQL (Kong config database)
+- Redis (cache)
+- Elasticsearch (search)
+- Kong Gateway (API gateway with JWT authentication)
+- Backend (Spring Boot)
+- Frontend (React)
 
-5. View logs:
+4. Access the application:
+- **Frontend**: http://localhost:3000
+- **API (via Kong)**: http://localhost:8000
+- **Backend (direct)**: http://localhost:8080
+- **Kong Admin**: http://localhost:8001
+
+5. Test authentication:
 ```bash
-docker-compose logs -f
+# Register user
+curl -X POST http://localhost:8000/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"email":"test@example.com","password":"password123","name":"Test User"}'
+
+# Login and get JWT
+curl -X POST http://localhost:8000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"test@example.com","password":"password123"}'
 ```
 
-6. Stop all services:
+6. View logs:
+```bash
+# All services
+docker-compose logs -f
+
+# Specific service
+docker-compose logs -f kong
+docker-compose logs -f backend
+```
+
+7. Stop all services:
 ```bash
 docker-compose down
 ```
 
-7. Stop and remove all data (including database):
+8. Stop and remove all data (including databases):
 ```bash
 docker-compose down -v
 ```
+
+#### Local Development Modes
+
+**With Kong (Default)** - Recommended, mirrors production:
+```bash
+# In .env file:
+USE_KONG_AUTH=true
+VITE_API_URL=http://localhost:8000
+
+# All requests go through Kong on port 8000
+```
+
+**Without Kong** - Direct backend access for debugging:
+```bash
+# In .env file:
+USE_KONG_AUTH=false
+VITE_API_URL=http://localhost:8080
+
+# Requests go directly to backend
+docker-compose up -d --build backend
+```
+
+For detailed local testing guide, see [docs/LOCAL_TESTING_WITH_KONG.md](docs/LOCAL_TESTING_WITH_KONG.md)
 
 #### Docker Environment Variables
 
