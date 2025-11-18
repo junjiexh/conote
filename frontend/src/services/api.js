@@ -1,18 +1,19 @@
-import axios from 'axios';
+import axios from "axios";
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
+const API_BASE_URL =
+  import.meta.env.VITE_API_URL || "http://localhost:8000/api";
 
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
   },
 });
 
 // Add JWT token to requests
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem("token");
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -20,7 +21,7 @@ api.interceptors.request.use(
   },
   (error) => {
     return Promise.reject(error);
-  }
+  },
 );
 
 // Handle 401 errors
@@ -28,42 +29,41 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response && error.response.status === 401) {
-      localStorage.removeItem('token');
-      window.location.href = '/login';
+      localStorage.removeItem("token");
+      window.location.href = "/login";
     }
     return Promise.reject(error);
-  }
+  },
 );
 
 // Authentication API
 export const authAPI = {
   register: (email, password) =>
-    api.post('/auth/register', { email, password }),
-  login: (email, password) =>
-    api.post('/auth/login', { email, password }),
+    api.post("/auth/register", { email, password }),
+  login: (email, password) => api.post("/auth/login", { email, password }),
 };
 
 // Document API
 export const documentAPI = {
-  getAll: () => api.get('/documents'),
+  getAll: () => api.get("/documents"),
   getById: (id) => api.get(`/documents/${id}`),
   create: (title, parentId = null, folderId = null) =>
-    api.post('/documents', { title, parentId, folderId }),
+    api.post("/documents", { title, parentId, folderId }),
   update: (id, title, content, folderId = null) =>
     api.put(`/documents/${id}`, { title, content, folderId }),
   move: (id, newParentId) =>
     api.patch(`/documents/${id}/move`, { newParentId }),
   delete: (id) => api.delete(`/documents/${id}`),
   search: (query, page = 0, size = 20) =>
-    api.post('/documents/search', { query, page, size }),
+    api.post("/documents/search", { query, page, size }),
 };
 
 // Sharing API
 export const sharingAPI = {
   shareDocument: (documentId, email, permissionLevel) =>
-    api.post('/sharing/share', { documentId, email, permissionLevel }),
+    api.post("/sharing/share", { documentId, email, permissionLevel }),
   revokePermission: (documentId, userId) =>
-    api.delete('/sharing/revoke', { data: { documentId, userId } }),
+    api.delete("/sharing/revoke", { data: { documentId, userId } }),
   getCollaborators: (documentId) =>
     api.get(`/sharing/document/${documentId}/collaborators`),
   getPermissions: (documentId) =>
@@ -74,9 +74,9 @@ export const sharingAPI = {
 
 // Folder API
 export const folderAPI = {
-  getAll: () => api.get('/folders'),
+  getAll: () => api.get("/folders"),
   getById: (id) => api.get(`/folders/${id}`),
-  create: (name) => api.post('/folders', { name }),
+  create: (name) => api.post("/folders", { name }),
   update: (id, name) => api.put(`/folders/${id}`, { name }),
   delete: (id) => api.delete(`/folders/${id}`),
   getDocuments: (id) => api.get(`/folders/${id}/documents`),
