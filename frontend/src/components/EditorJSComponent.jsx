@@ -189,10 +189,13 @@ const EditorJSComponent = ({ value, onChange, placeholder, className }) => {
         .editorjs-container {
           width: 100%;
           height: 100%;
+          position: relative;
+          overflow: visible;
         }
 
         .codex-editor {
           position: relative;
+          z-index: 1;
         }
 
         .codex-editor__redactor {

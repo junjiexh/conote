@@ -69,7 +69,7 @@ const LeftPanel = ({
   };
 
   return (
-    <aside className="w-80 border-r bg-background flex flex-col h-full">
+    <aside className="w-80 border-r bg-background flex flex-col h-full relative z-0">
       {/* User Info Section */}
       <div className="p-4 space-y-3">
         <div className="flex items-center gap-3">

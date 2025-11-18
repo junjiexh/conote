@@ -144,7 +144,7 @@ const Dashboard = () => {
       />
 
       {/* Right Panel - Editor */}
-      <main className="flex-1 overflow-hidden">
+      <main className="flex-1 overflow-hidden relative isolate">
         <Editor document={activeDocument} onSave={handleSaveDocument} />
       </main>
 
