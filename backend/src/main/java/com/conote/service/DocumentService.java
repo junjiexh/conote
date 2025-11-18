@@ -181,8 +181,6 @@ public class DocumentService {
             document.setTitle(request.getTitle());
         }
         if (request.getContent() != null) {
-            document.setContent(request.getContent());
-
             // Store Editor.js JSON content in MongoDB
             // Detect if content is JSON (Editor.js format) or HTML (legacy format)
             if (isJsonContent(request.getContent())) {
@@ -201,6 +199,12 @@ public class DocumentService {
 
                 documentContentRepository.save(documentContent);
                 log.info("Saved Editor.js JSON content to MongoDB for document: {}", id);
+
+                // Clear PostgreSQL content field - MongoDB is now the source of truth
+                document.setContent("");
+            } else {
+                // For non-JSON content (legacy or edge cases), store in PostgreSQL
+                document.setContent(request.getContent());
             }
         }
 

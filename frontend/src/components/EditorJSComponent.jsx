@@ -27,13 +27,21 @@ const EditorJSComponent = ({ value, onChange, placeholder, className }) => {
       try {
         // If value is a string, try to parse it as JSON
         if (typeof value === 'string') {
-          initialData = JSON.parse(value);
+          const trimmed = value.trim();
+          // Check if it's valid JSON (starts with { and ends with })
+          if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+            initialData = JSON.parse(value);
+          } else {
+            // If it's HTML or plain text (legacy content), start fresh
+            console.info('Legacy HTML/text content detected, starting with empty editor');
+            initialData = null;
+          }
         } else {
           initialData = value;
         }
       } catch (error) {
-        console.warn('Failed to parse initial editor content:', error);
-        // If parsing fails, treat as empty
+        console.info('Invalid JSON content, starting with empty editor');
+        // If parsing fails, start with empty editor
         initialData = null;
       }
     }
@@ -127,7 +135,20 @@ const EditorJSComponent = ({ value, onChange, placeholder, className }) => {
         let newData = null;
         if (value) {
           if (typeof value === 'string') {
-            newData = JSON.parse(value);
+            const trimmed = value.trim();
+            // Check if it's valid JSON (starts with { and ends with })
+            if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+              try {
+                newData = JSON.parse(value);
+              } catch (e) {
+                console.info('Failed to parse JSON, clearing editor');
+                newData = null;
+              }
+            } else {
+              // If it's HTML or plain text (legacy content), clear editor
+              console.info('Legacy content detected, clearing editor');
+              newData = null;
+            }
           } else {
             newData = value;
           }
@@ -142,7 +163,15 @@ const EditorJSComponent = ({ value, onChange, placeholder, className }) => {
           }
         }
       } catch (error) {
-        console.warn('Failed to update editor content:', error);
+        console.info('Failed to update editor content, clearing:', error.message);
+        // If there's any error, just clear the editor
+        try {
+          if (editorInstanceRef.current && editorInstanceRef.current.isReady) {
+            await editorInstanceRef.current.clear();
+          }
+        } catch (clearError) {
+          console.error('Failed to clear editor:', clearError);
+        }
       }
     };
 
