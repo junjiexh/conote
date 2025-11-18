@@ -26,9 +26,6 @@ public class Document {
     @Column(name = "parent_id")
     private UUID parentId;
 
-    @Column(name = "folder_id")
-    private UUID folderId;
-
     @Column(nullable = false)
     private String title;
 

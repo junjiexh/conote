@@ -11,7 +11,6 @@ import java.util.UUID;
 @Repository
 public interface DocumentRepository extends JpaRepository<Document, UUID> {
     List<Document> findByUserId(UUID userId);
-    List<Document> findByFolderId(UUID folderId);
     Optional<Document> findByIdAndUserId(UUID id, UUID userId);
     void deleteByIdAndUserId(UUID id, UUID userId);
 }

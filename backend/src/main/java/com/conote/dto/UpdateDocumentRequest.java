@@ -12,5 +12,4 @@ import java.util.UUID;
 public class UpdateDocumentRequest {
     private String title;
     private String content;
-    private UUID folderId;
 }

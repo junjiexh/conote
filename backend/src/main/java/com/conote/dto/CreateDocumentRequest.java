@@ -15,6 +15,4 @@ public class CreateDocumentRequest {
     private String title;
 
     private UUID parentId;
-
-    private UUID folderId;
 }
