@@ -47,10 +47,10 @@ export const authAPI = {
 export const documentAPI = {
   getAll: () => api.get("/documents"),
   getById: (id) => api.get(`/documents/${id}`),
-  create: (title, parentId = null, folderId = null) =>
-    api.post("/documents", { title, parentId, folderId }),
-  update: (id, title, content, folderId = null) =>
-    api.put(`/documents/${id}`, { title, content, folderId }),
+  create: (title, parentId = null) =>
+    api.post("/documents", { title, parentId }),
+  update: (id, title, content) =>
+    api.put(`/documents/${id}`, { title, content }),
   move: (id, newParentId) =>
     api.patch(`/documents/${id}/move`, { newParentId }),
   delete: (id) => api.delete(`/documents/${id}`),
@@ -70,16 +70,6 @@ export const sharingAPI = {
     api.get(`/sharing/document/${documentId}/permissions`),
   checkAccess: (documentId) =>
     api.get(`/sharing/document/${documentId}/check-access`),
-};
-
-// Folder API
-export const folderAPI = {
-  getAll: () => api.get("/folders"),
-  getById: (id) => api.get(`/folders/${id}`),
-  create: (name) => api.post("/folders", { name }),
-  update: (id, name) => api.put(`/folders/${id}`, { name }),
-  delete: (id) => api.delete(`/folders/${id}`),
-  getDocuments: (id) => api.get(`/folders/${id}/documents`),
 };
 
 export default api;

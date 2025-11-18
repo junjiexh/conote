@@ -25,9 +25,6 @@ public class DocumentSearchIndex {
     @Field(type = FieldType.Keyword)
     private String parentId;
 
-    @Field(type = FieldType.Keyword)
-    private String folderId;
-
     @Field(type = FieldType.Text, analyzer = "standard")
     private String title;
 
@@ -46,7 +43,6 @@ public class DocumentSearchIndex {
         index.setId(document.getId().toString());
         index.setUserId(document.getUserId().toString());
         index.setParentId(document.getParentId() != null ? document.getParentId().toString() : null);
-        index.setFolderId(document.getFolderId() != null ? document.getFolderId().toString() : null);
         index.setTitle(document.getTitle());
         index.setContent(document.getContent());
         index.setCreatedAt(document.getCreatedAt());
