@@ -100,7 +100,7 @@ services:
     depends_on:
       - elasticsearch
 
-  # Account Service (Go gRPC)
+  # Account Service (Go gRPC + HTTP)
   account-service:
     build:
       context: ./account-service
@@ -121,12 +121,13 @@ services:
       LOCKOUT_DURATION_MINUTES: 30
       PASSWORD_MIN_LENGTH: 8
     ports:
-      - "50051:50051"
+      - "50051:50051"  # gRPC port
+      - "8081:8080"     # HTTP REST API port
     depends_on:
       postgres:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "nc", "-z", "localhost", "50051"]
+      test: ["CMD-SHELL", "nc -z localhost 50051 && nc -z localhost 8080"]
       interval: 10s
       timeout: 5s
       retries: 5

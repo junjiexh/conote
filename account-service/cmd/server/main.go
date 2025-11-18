@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"net/http"
 
 	_ "github.com/lib/pq"
 	"google.golang.org/grpc"
@@ -15,6 +16,7 @@ import (
 	"github.com/junjiexh/conote/account-service/internal/repository"
 	"github.com/junjiexh/conote/account-service/internal/service"
 	grpcpkg "github.com/junjiexh/conote/account-service/pkg/grpc"
+	httppkg "github.com/junjiexh/conote/account-service/pkg/http"
 )
 
 func main() {
@@ -54,15 +56,27 @@ func main() {
 	// Register reflection service for grpcurl
 	reflection.Register(grpcServer)
 
-	// Start listening
-	address := fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port)
-	listener, err := net.Listen("tcp", address)
+	// Start gRPC server in a goroutine
+	grpcAddress := fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port)
+	listener, err := net.Listen("tcp", grpcAddress)
 	if err != nil {
-		log.Fatalf("Failed to listen on %s: %v", address, err)
+		log.Fatalf("Failed to listen on %s: %v", grpcAddress, err)
 	}
 
-	log.Printf("Account service starting on %s", address)
-	if err := grpcServer.Serve(listener); err != nil {
-		log.Fatalf("Failed to serve: %v", err)
+	go func() {
+		log.Printf("gRPC server starting on %s", grpcAddress)
+		if err := grpcServer.Serve(listener); err != nil {
+			log.Fatalf("Failed to serve gRPC: %v", err)
+		}
+	}()
+
+	// Start HTTP server
+	httpHandler := httppkg.NewHandler(authService)
+	router := httpHandler.SetupRoutes()
+
+	httpAddress := fmt.Sprintf("%s:8080", cfg.Server.Host)
+	log.Printf("HTTP server starting on %s", httpAddress)
+	if err := http.ListenAndServe(httpAddress, router); err != nil {
+		log.Fatalf("Failed to serve HTTP: %v", err)
 	}
 }
