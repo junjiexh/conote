@@ -38,7 +38,11 @@ public class JwtUtil {
     }
 
     public String extractEmail(String token) {
-        return extractClaim(token, Claims::getSubject);
+        return (String) extractClaim(token, claims -> claims.get("email"));
+    }
+
+    public String extractRole(String token) {
+        return (String) extractClaim(token, claims -> claims.get("role"));
     }
 
     public UUID extractUserUuid(String token) {
@@ -105,5 +109,18 @@ public class JwtUtil {
         logger.info("Token validation result: {}", isValid);
 
         return isValid;
+    }
+
+    /**
+     * Validate token without UserDetails
+     * Used for initial authentication where we don't have UserDetails yet
+     */
+    public Boolean validateToken(String token) {
+        try {
+            return !isTokenExpired(token);
+        } catch (Exception e) {
+            logger.error("Token validation failed", e);
+            return false;
+        }
     }
 }

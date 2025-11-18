@@ -1,11 +1,10 @@
 _format_version: "3.0"
 
-# Backend Service
+# Account Service (for auth endpoints)
 services:
-- name: backend-service
-  url: http://backend:8080
+- name: account-service
+  url: http://account-service:8080
   routes:
-  # Public routes - no JWT required
   - name: auth-routes
     paths:
     - /api/auth
@@ -35,6 +34,11 @@ services:
     - name: request-size-limiting
       config:
         allowed_payload_size: 10
+
+# Backend Service
+- name: backend-service
+  url: http://backend:8080
+  routes:
 
   - name: health-routes
     paths:
