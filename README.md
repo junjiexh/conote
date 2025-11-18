@@ -33,6 +33,11 @@ A full-stack web application for creating and managing hierarchical documents wi
 - **HTTP Client**: Axios
 - **Styling**: Tailwind CSS
 
+### API Gateway (Kubernetes Deployment)
+- **Kong Gateway 3.4**: Handles JWT authentication, rate limiting, and CORS
+- **Kong PostgreSQL**: Configuration storage
+- **Plugins**: JWT, Request Transformer, CORS, Rate Limiting
+
 ## Architecture
 
 ### Database Schema
@@ -80,7 +85,7 @@ CREATE TABLE documents (
 
 ### Quick Start with Docker (Recommended)
 
-The easiest way to run Conote is using Docker Compose. This will start all services (database, backend, and frontend) with a single command.
+The easiest way to run Conote is using Docker Compose. This will start all services including Kong API Gateway for authentication.
 
 #### Prerequisites
 - Docker Desktop or Docker Engine 20.10+
@@ -94,36 +99,87 @@ git clone <repository-url>
 cd conote
 ```
 
-2. (Optional) Customize environment variables:
+2. Configure environment variables:
 ```bash
 cp .env.example .env
-# Edit .env with your preferred settings
+# Edit .env if needed (defaults work for local development)
 ```
 
-3. Start all services:
+3. Start all services (including Kong Gateway):
 ```bash
 docker-compose up -d
 ```
 
-4. Access the application:
-- Frontend: http://localhost:3000
-- Backend API: http://localhost:8080
-- PostgreSQL: localhost:5432
+This starts:
+- PostgreSQL (app database)
+- Kong PostgreSQL (Kong config database)
+- Redis (cache)
+- Elasticsearch (search)
+- Kong Gateway (API gateway with JWT authentication)
+- Backend (Spring Boot)
+- Frontend (React)
 
-5. View logs:
+4. Access the application:
+- **Frontend**: http://localhost:3000
+- **API (via Kong)**: http://localhost:8000
+- **Backend (direct)**: http://localhost:8080
+- **Kong Admin**: http://localhost:8001
+
+5. Test authentication:
 ```bash
-docker-compose logs -f
+# Register user
+curl -X POST http://localhost:8000/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"email":"test@example.com","password":"password123","name":"Test User"}'
+
+# Login and get JWT
+curl -X POST http://localhost:8000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"test@example.com","password":"password123"}'
 ```
 
-6. Stop all services:
+6. View logs:
+```bash
+# All services
+docker-compose logs -f
+
+# Specific service
+docker-compose logs -f kong
+docker-compose logs -f backend
+```
+
+7. Stop all services:
 ```bash
 docker-compose down
 ```
 
-7. Stop and remove all data (including database):
+8. Stop and remove all data (including databases):
 ```bash
 docker-compose down -v
 ```
+
+#### Local Development Modes
+
+**With Kong (Default)** - Recommended, mirrors production:
+```bash
+# In .env file:
+USE_KONG_AUTH=true
+VITE_API_URL=http://localhost:8000
+
+# All requests go through Kong on port 8000
+```
+
+**Without Kong** - Direct backend access for debugging:
+```bash
+# In .env file:
+USE_KONG_AUTH=false
+VITE_API_URL=http://localhost:8080
+
+# Requests go directly to backend
+docker-compose up -d --build backend
+```
+
+For detailed local testing guide, see [docs/LOCAL_TESTING_WITH_KONG.md](docs/LOCAL_TESTING_WITH_KONG.md)
 
 #### Docker Environment Variables
 
@@ -201,6 +257,73 @@ npm run dev
 
 The frontend will start on `http://localhost:3000`
 
+### Kubernetes Deployment with Kong API Gateway
+
+For production deployments, Conote can be deployed to Kubernetes with Kong API Gateway handling all JWT authentication, allowing backend services to focus on business logic.
+
+#### Prerequisites
+- Kubernetes cluster (Kind, Minikube, or cloud provider)
+- kubectl configured
+- Docker for building images
+
+#### Deploy to Kubernetes
+
+1. **Deploy Kong API Gateway**:
+```bash
+# Deploy Kong with PostgreSQL and JWT authentication
+./scripts/deploy-kong.sh
+```
+
+2. **Configure JWT Secret** (must match backend):
+```bash
+# Update Kong's JWT secret to match backend
+./scripts/update-kong-jwt-secret.sh "your-jwt-secret-here"
+```
+
+3. **Deploy Backend and Database**:
+```bash
+# Deploy PostgreSQL, Redis, Elasticsearch, and Backend
+kubectl apply -f k8s/postgres-cm1-configmap.yaml
+kubectl apply -f k8s/postgres-deployment.yaml
+kubectl apply -f k8s/postgres-service.yaml
+kubectl apply -f k8s/redis-deployment.yaml
+kubectl apply -f k8s/redis-service.yaml
+kubectl apply -f k8s/elasticsearch-deployment.yaml
+kubectl apply -f k8s/elasticsearch-service.yaml
+kubectl apply -f k8s/backend-deployment.yaml
+kubectl apply -f k8s/backend-service.yaml
+```
+
+4. **Deploy Frontend**:
+```bash
+kubectl apply -f k8s/frontend-deployment.yaml
+kubectl apply -f k8s/frontend-service.yaml
+```
+
+5. **Access the Application**:
+- Frontend: http://localhost:30000
+- Backend (via Kong): http://localhost:30080
+- Kong Admin API: `kubectl port-forward svc/kong-admin 8001:8001`
+
+#### Kong Authentication Flow
+
+1. User logs in via Kong → `/api/auth/login`
+2. Backend generates JWT with `iss: conote-issuer`
+3. Frontend stores JWT and includes in `Authorization: Bearer <token>` header
+4. Kong validates JWT signature and expiration
+5. Kong extracts `userId` and `email` claims
+6. Kong injects `X-User-Id` and `X-User-Email` headers
+7. Backend trusts Kong's headers and loads user context
+
+**Benefits**:
+- ✅ Backend services focus on business logic
+- ✅ Centralized authentication at API Gateway
+- ✅ Rate limiting and request size limiting
+- ✅ CORS handling
+- ✅ Easy to add new protected routes
+
+For detailed Kong configuration and troubleshooting, see [k8s/kong/README.md](k8s/kong/README.md).
+
 ## Usage
 
 1. Open your browser and navigate to `http://localhost:3000`
@@ -248,10 +371,15 @@ conote/
 ## Security Features
 
 - Password hashing with BCrypt
-- JWT-based authentication
-- Protected API endpoints
+- JWT-based authentication (HS256 algorithm)
+- Protected API endpoints with Spring Security
 - CORS configuration for frontend-backend communication
 - User data isolation (users can only access their own documents)
+- **Kong Gateway (Kubernetes)**:
+  - Centralized JWT validation at API Gateway level
+  - Rate limiting (100 requests/min, 1000/hour)
+  - Request size limiting (10MB)
+  - Automatic header injection for user context
 
 ## Future Enhancements
 
