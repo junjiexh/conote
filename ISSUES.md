@@ -2,8 +2,10 @@
 
 - [x] Unexpected behavior when try to save empty editor body.
 - [x] Improve ui. Use claude theme
-- [ ] Support rich-text
-    - Tiptap (modern, headless, based on Prosemirror), Quill.js, or Lexical, compare them and make decisions
+- [x] Support rich-text
+- [ ] Auto-saving
+    - Debouncing and Throttling on client-side
+    - Dirty Checking and Batching/Queuing Saves on server-side
 - [ ] Real time collaboration
     - Y.js or Automerge
 - [ ] Offline-First Support
@@ -11,5 +13,4 @@
 - [ ] Optimistic UI Updates: When a user renames a note, it should rename instantly in the UI, even before the backend confirms the change.
 - [ ] Drag-and-Drop Functionality
     - Cannot move documents now
-- [ ] Auto-saving
 - [ ] Version history

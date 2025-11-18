@@ -20,6 +20,33 @@ services:
     networks:
       - conote-network
 
+  # Kong Gateway (DB-less mode with declarative config)
+  kong:
+    image: kong:3.9.1
+    container_name: conote-kong
+    environment:
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /etc/kong/kong.yml
+      KONG_PROXY_ACCESS_LOG: /dev/stdout
+      KONG_ADMIN_ACCESS_LOG: /dev/stdout
+      KONG_PROXY_ERROR_LOG: /dev/stderr
+      KONG_ADMIN_ERROR_LOG: /dev/stderr
+    volumes:
+      - ./kong.yml:/etc/kong/kong.yml:ro
+    ports:
+      - "8000:8000" # Kong proxy port (API gateway)
+      - "8443:8443" # Kong proxy SSL port
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "kong", "health"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+    networks:
+      - conote-network
+
   # Redis Cache
   redis:
     image: redis:7-alpine
@@ -51,7 +78,8 @@ services:
       - "9200:9200"
       - "9300:9300"
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      test:
+        ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -120,8 +148,6 @@ services:
       JWT_SECRET: ${JWT_SECRET:-your-secret-key-change-this-in-production-make-it-at-least-256-bits-long}
       JWT_EXPIRATION: ${JWT_EXPIRATION:-86400000}
       ACCOUNT_SERVICE_GRPC_ADDRESS: static://account-service:50051
-    ports:
-      - "8080:8080"
     depends_on:
       postgres:
         condition: service_healthy
@@ -132,7 +158,15 @@ services:
       account-service:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/actuator/health"]
+      test:
+        [
+          "CMD",
+          "wget",
+          "--quiet",
+          "--tries=1",
+          "--spider",
+          "http://localhost:8080/actuator/health",
+        ]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -145,14 +179,24 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        - ${VITE_API_URL:-http://localhost:8000/api}
     container_name: conote-frontend
     ports:
       - "3000:80"
     depends_on:
-      backend:
+      kong:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80"]
+      test:
+        [
+          "CMD",
+          "wget",
+          "--quiet",
+          "--tries=1",
+          "--spider",
+          "http://localhost:80",
+        ]
       interval: 30s
       timeout: 10s
       retries: 3
