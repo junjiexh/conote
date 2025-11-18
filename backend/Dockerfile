@@ -7,9 +7,15 @@ WORKDIR /app
 COPY pom.xml .
 RUN mvn dependency:go-offline -B
 
-# Copy source code and build
+# Copy proto files (must be copied by Makefile before docker build)
+COPY src/main/proto ./src/main/proto
+
+# Copy source code
 COPY src ./src
-RUN mvn clean package -DskipTests
+
+# Generate protobuf code and build (single Maven invocation)
+# Use 'package' instead of 'clean package' to avoid re-downloading dependencies
+RUN mvn package -DskipTests -B
 
 # Runtime stage
 FROM eclipse-temurin:17-jre

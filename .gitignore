@@ -33,3 +33,4 @@ Thumbs.db
 # Generated protobuf files (regenerate from proto/ directory)
 **/*.pb.go
 **/generated-sources/protobuf/
+backend/src/main/proto/

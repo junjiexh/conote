@@ -127,12 +127,19 @@ cp .env.example .env
 # Edit .env with your preferred settings
 ```
 
-3. Start all services:
+3. Generate proto code (required before building):
+```bash
+cd proto
+make docker-build
+cd ..
+```
+
+4. Start all services:
 ```bash
 docker-compose up -d
 ```
 
-4. Access the application:
+5. Access the application:
 - Frontend: http://localhost:3000
 - Backend API: http://localhost:8080
 - PostgreSQL: localhost:5432

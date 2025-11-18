@@ -38,9 +38,44 @@ Generates to: `backend/target/generated-sources/protobuf/`
 ### Other Commands
 
 ```bash
-make clean  # Remove all generated code
-make help   # Show all available commands
+make clean        # Remove all generated code
+make docker-build # Prepare for Docker builds
+make help         # Show all available commands
 ```
+
+### Docker Build Workflow
+
+#### Option 1: Jib (Recommended - Fast!)
+
+Use Jib Maven plugin for the backend (no Docker daemon required during build):
+
+```bash
+cd proto
+make jib-backend    # Generates proto + builds image (~20s)
+```
+
+Then build other services normally:
+```bash
+cd ..
+docker-compose build account-service frontend
+```
+
+#### Option 2: Traditional Docker Build
+
+```bash
+# 1. Generate proto code
+cd proto
+make docker-build
+
+# 2. Build Docker images
+cd ..
+docker-compose build
+```
+
+**Note:** Backend now uses Jib by default. The Makefile `jib-backend` target:
+1. Copies proto files to `backend/src/main/proto/account/`
+2. Generates Java code in `backend/target/generated-sources/protobuf/`
+3. Builds Docker image with Jib (much faster than traditional Docker build)
 
 ## Adding New Proto Files
 

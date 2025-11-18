@@ -108,9 +108,7 @@ services:
 
   # Spring Boot Backend
   backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+    image: conote-backend:latest
     container_name: conote-backend
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-conote}
