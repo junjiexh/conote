@@ -1,8 +1,5 @@
 package com.conote.security;
 
-import com.conote.exception.BadRequestException;
-import com.conote.grpc.AccountServiceClient;
-import com.conote.grpc.account.ValidateTokenResponse;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -28,7 +25,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private static final Logger logger = LoggerFactory.getLogger(JwtAuthenticationFilter.class);
 
     @Autowired
-    private AccountServiceClient accountServiceClient;
+    private JwtUtil jwtUtil;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
@@ -48,17 +45,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         if (jwt != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             try {
-                // Validate token via gRPC account service
-                ValidateTokenResponse validateResponse = accountServiceClient.validateToken(jwt);
+                // Validate token locally using shared secret key
+                if (jwtUtil.validateToken(jwt)) {
+                    String email = jwtUtil.extractEmail(jwt);
+                    String role = jwtUtil.extractRole(jwt);
 
-                if (validateResponse.getValid()) {
-                    logger.info("JWT validation successful for: {}", validateResponse.getEmail());
+                    logger.info("JWT validation successful for: {}", email);
 
                     // Create UserDetails from validated token
                     UserDetails userDetails = User.builder()
-                            .username(validateResponse.getEmail())
+                            .username(email)
                             .password("") // Password not needed for token-based auth
-                            .authorities(Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + validateResponse.getRole())))
+                            .authorities(Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + role)))
                             .build();
 
                     UsernamePasswordAuthenticationToken authenticationToken =
@@ -66,10 +64,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     authenticationToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                     SecurityContextHolder.getContext().setAuthentication(authenticationToken);
                 } else {
-                    logger.error("JWT validation FAILED: {}", validateResponse.getMessage());
+                    logger.error("JWT validation FAILED: token is invalid or expired");
                 }
             } catch (Exception e) {
-                logger.error("Error validating JWT token via gRPC", e);
+                logger.error("Error validating JWT token locally", e);
             }
         }
 
