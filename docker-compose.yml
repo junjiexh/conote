@@ -64,6 +64,24 @@ services:
     networks:
       - conote-network
 
+  # MongoDB (for Editor.js JSON content)
+  mongodb:
+    image: mongo:7-jammy
+    container_name: conote-mongodb
+    environment:
+      MONGO_INITDB_DATABASE: ${MONGODB_DATABASE:-conote}
+    volumes:
+      - mongodb_data:/data/db
+    ports:
+      - "27017:27017"
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - conote-network
+
   # Elasticsearch
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
@@ -145,6 +163,8 @@ services:
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       SPRING_DATA_REDIS_HOST: redis
       SPRING_DATA_REDIS_PORT: 6379
+      SPRING_DATA_MONGODB_URI: mongodb://mongodb:27017/${MONGODB_DATABASE:-conote}
+      SPRING_DATA_MONGODB_DATABASE: ${MONGODB_DATABASE:-conote}
       SPRING_ELASTICSEARCH_URIS: http://elasticsearch:9200
       JWT_SECRET: ${JWT_SECRET:-your-secret-key-change-this-in-production-make-it-at-least-256-bits-long}
       JWT_EXPIRATION: ${JWT_EXPIRATION:-86400000}
@@ -153,6 +173,8 @@ services:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      mongodb:
         condition: service_healthy
       elasticsearch:
         condition: service_healthy
@@ -212,6 +234,8 @@ volumes:
   postgres_data:
     driver: local
   redis_data:
+    driver: local
+  mongodb_data:
     driver: local
   elasticsearch_data:
     driver: local

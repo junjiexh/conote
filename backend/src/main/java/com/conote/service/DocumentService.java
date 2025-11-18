@@ -5,10 +5,12 @@ import com.conote.exception.BadRequestException;
 import com.conote.exception.ForbiddenException;
 import com.conote.exception.ResourceNotFoundException;
 import com.conote.model.Document;
+import com.conote.model.DocumentContent;
 import com.conote.model.DocumentPermission;
 import com.conote.model.DocumentSearchIndex;
 import com.conote.model.PermissionLevel;
 import com.conote.model.User;
+import com.conote.repository.DocumentContentRepository;
 import com.conote.repository.DocumentRepository;
 import com.conote.repository.DocumentSearchRepository;
 import com.conote.repository.UserRepository;
@@ -35,6 +37,7 @@ import java.util.stream.Collectors;
 public class DocumentService {
 
     private final DocumentRepository documentRepository;
+    private final DocumentContentRepository documentContentRepository;
     private final DocumentSearchRepository documentSearchRepository;
     private final UserRepository userRepository;
     private final PermissionService permissionService;
@@ -115,8 +118,18 @@ public class DocumentService {
             throw new ForbiddenException("You don't have permission to view this document");
         }
 
-        return documentRepository.findById(id)
+        Document document = documentRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Document", "id", id));
+
+        // Try to get Editor.js JSON content from MongoDB
+        documentContentRepository.findById(id.toString()).ifPresent(documentContent -> {
+            // If MongoDB has JSON content, use it; otherwise use HTML from PostgreSQL
+            if (documentContent.getContentJson() != null && !documentContent.getContentJson().isEmpty()) {
+                document.setContent(documentContent.getContentJson());
+            }
+        });
+
+        return document;
     }
 
     @Transactional
@@ -169,6 +182,26 @@ public class DocumentService {
         }
         if (request.getContent() != null) {
             document.setContent(request.getContent());
+
+            // Store Editor.js JSON content in MongoDB
+            // Detect if content is JSON (Editor.js format) or HTML (legacy format)
+            if (isJsonContent(request.getContent())) {
+                DocumentContent documentContent = documentContentRepository
+                        .findById(id.toString())
+                        .orElse(new DocumentContent());
+
+                documentContent.setId(id.toString());
+                documentContent.setUserId(userId.toString());
+                documentContent.setContentJson(request.getContent());
+                documentContent.setUpdatedAt(java.time.LocalDateTime.now());
+
+                if (documentContent.getCreatedAt() == null) {
+                    documentContent.setCreatedAt(java.time.LocalDateTime.now());
+                }
+
+                documentContentRepository.save(documentContent);
+                log.info("Saved Editor.js JSON content to MongoDB for document: {}", id);
+            }
         }
 
         Document savedDocument = documentRepository.save(document);
@@ -179,6 +212,17 @@ public class DocumentService {
         documentSearchRepository.save(searchIndex);
 
         return savedDocument;
+    }
+
+    /**
+     * Helper method to detect if content is JSON format (Editor.js) or HTML
+     */
+    private boolean isJsonContent(String content) {
+        if (content == null || content.trim().isEmpty()) {
+            return false;
+        }
+        String trimmed = content.trim();
+        return trimmed.startsWith("{") && trimmed.endsWith("}");
     }
 
     @Transactional
@@ -251,6 +295,14 @@ public class DocumentService {
                 .orElseThrow(() -> new ResourceNotFoundException("Document", "id", id));
 
         documentRepository.delete(document);
+
+        // Delete from MongoDB (if exists)
+        try {
+            documentContentRepository.deleteById(id.toString());
+            log.info("Deleted document content from MongoDB for document: {}", id);
+        } catch (Exception e) {
+            log.warn("Failed to delete document content from MongoDB: {}", e.getMessage());
+        }
 
         // Delete from Elasticsearch
         documentSearchRepository.deleteById(id.toString());
