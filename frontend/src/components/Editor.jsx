@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { FileText, Clock } from 'lucide-react';
-import LexicalEditor from './LexicalEditor';
+import TiptapEditor from './TiptapEditor';
 
 const Editor = ({ document, onSave }) => {
   const [title, setTitle] = useState('');
@@ -92,7 +92,7 @@ const Editor = ({ document, onSave }) => {
       </div>
 
       <div className="flex-1 overflow-hidden px-4 pb-4">
-        <LexicalEditor
+        <TiptapEditor
           key={document.id}
           className="w-full h-full text-base"
           value={document.content}

@@ -15,7 +15,7 @@ export default defineConfig({
     port: 3000,
     proxy: {
       "/api": {
-        target: "http://backend:8080", // Use docker service name
+        target: "http://backend:8000", // Use docker service name
         changeOrigin: true,
       },
     },
