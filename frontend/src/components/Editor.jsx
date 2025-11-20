@@ -98,6 +98,7 @@ const Editor = ({ document, onSave }) => {
           value={document.content}
           onChange={(newContent) => setContent(newContent)}
           placeholder="Start typing..."
+          documentId={document.id}
         />
       </div>
     </div>

@@ -1,8 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
 import Link from "@tiptap/extension-link";
+import Collaboration from "@tiptap/extension-collaboration";
+import CollaborationCursor from "@tiptap/extension-collaboration-cursor";
+import * as Y from "yjs";
+import { WebsocketProvider } from "y-websocket";
 import {
   Bold,
   Italic,
@@ -11,19 +15,20 @@ import {
   Code,
   Undo,
   Redo,
-  Link as LinkIcon,
 } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
 
 const EMPTY_DOCUMENT = "<p></p>";
+const COLLAB_SERVER_URL =
+  import.meta.env.VITE_COLLAB_URL || "ws://localhost:1234";
 
 const ToolbarButton = ({ onClick, active, icon: Icon, title, disabled }) => (
   <button
     type="button"
     onClick={onClick}
     disabled={disabled}
-    className={`p-2 rounded hover:bg-gray-200 transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
-      active ? "bg-gray-300" : ""
-    }`}
+    className={`p-2 rounded hover:bg-gray-200 transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${active ? "bg-gray-300" : ""
+      }`}
     title={title}
   >
     <Icon size={18} />
@@ -35,12 +40,89 @@ const TiptapEditor = ({
   onChange,
   placeholder = "Start typing...",
   className,
+  documentId,
 }) => {
   const [isEmpty, setIsEmpty] = useState(true);
+  const [collabStatus, setCollabStatus] = useState("disconnected");
+  const { user, token } = useAuth();
+
+  const canUseCollaboration = Boolean(COLLAB_SERVER_URL && documentId && token);
+
+  const ydoc = useMemo(() => {
+    if (!canUseCollaboration) {
+      return null;
+    }
+    return new Y.Doc();
+  }, [documentId, canUseCollaboration]);
+
+  useEffect(() => {
+    return () => {
+      ydoc?.destroy();
+    };
+  }, [ydoc]);
+
+  const provider = useMemo(() => {
+    if (!canUseCollaboration || !ydoc) {
+      return null;
+    }
+
+    const wsProvider = new WebsocketProvider(
+      COLLAB_SERVER_URL,
+      String(documentId),
+      ydoc,
+      {
+        params: {
+          token,
+        },
+      },
+    );
+
+    return wsProvider;
+  }, [canUseCollaboration, ydoc, documentId, token]);
+
+  useEffect(() => {
+    if (!provider) {
+      setCollabStatus("disconnected");
+      return undefined;
+    }
+
+    const handleStatus = ({ status }) => {
+      setCollabStatus(status);
+    };
+
+    provider.on("status", handleStatus);
+
+    return () => {
+      provider.off("status", handleStatus);
+      provider.destroy();
+    };
+  }, [provider]);
+
+  const collaborationExtensions =
+    canUseCollaboration && ydoc && provider
+      ? [
+        Collaboration.configure({
+          document: ydoc,
+        }),
+        CollaborationCursor.configure({
+          provider,
+          user: {
+            name: user?.username || user?.email || "Anonymous",
+            color:
+              user?.email?.length > 0
+                ? `hsl(${Math.abs(
+                  user.email.split("").reduce((acc, c) => acc + c.charCodeAt(0), 0),
+                ) % 360}, 70%, 60%)`
+                : "#4f46e5",
+          },
+        }),
+      ]
+      : [];
 
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
+        history: !canUseCollaboration,
         heading: { levels: [1, 2, 3] },
         orderedList: { keepMarks: true },
         bulletList: { keepMarks: true },
@@ -54,8 +136,14 @@ const TiptapEditor = ({
           class: "text-blue-600 underline hover:text-blue-800",
         },
       }),
+      ...collaborationExtensions,
     ],
-    content: value && value.trim() ? value : EMPTY_DOCUMENT,
+    content:
+      canUseCollaboration || !value
+        ? undefined
+        : value.trim()
+          ? value
+          : EMPTY_DOCUMENT,
     autofocus: false,
     onCreate: ({ editor }) => {
       setIsEmpty(editor.isEmpty);
@@ -69,13 +157,23 @@ const TiptapEditor = ({
   });
 
   useEffect(() => {
-    if (!editor) return;
+    if (!editor || canUseCollaboration) return;
     const nextContent = value && value.trim() ? value : EMPTY_DOCUMENT;
     if (nextContent !== editor.getHTML()) {
       editor.commands.setContent(nextContent, false);
       setIsEmpty(editor.isEmpty);
     }
-  }, [editor, value]);
+  }, [editor, value, canUseCollaboration]);
+
+  useEffect(() => {
+    if (!editor || !canUseCollaboration || !ydoc) return;
+    const fragment = ydoc.getXmlFragment("prosemirror");
+    if (fragment.length === 0) {
+      const initialContent = value && value.trim() ? value : EMPTY_DOCUMENT;
+      editor.commands.setContent(initialContent, false);
+      setIsEmpty(editor.isEmpty);
+    }
+  }, [editor, value, canUseCollaboration, ydoc]);
 
   if (!editor) {
     return (
@@ -136,6 +234,13 @@ const TiptapEditor = ({
           title="Code"
           disabled={!editor.can().chain().focus().toggleCode().run()}
         />
+        {canUseCollaboration && (
+          <div className="ml-auto text-xs text-muted-foreground">
+            {collabStatus === "connected"
+              ? "Collaborative editing active"
+              : "Connecting collaboration…"}
+          </div>
+        )}
       </div>
 
       <div className="relative bg-background">

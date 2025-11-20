@@ -10,7 +10,10 @@ COPY package*.json ./
 RUN npm ci --only=production=false
 
 # Set backend api by build-time args
+ARG VITE_API_URL
+ARG VITE_COLLAB_URL
 ENV VITE_API_URL=${VITE_API_URL}
+ENV VITE_COLLAB_URL=${VITE_COLLAB_URL}
 
 # Copy source code and env files
 COPY . .

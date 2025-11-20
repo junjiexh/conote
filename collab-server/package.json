@@ -1,0 +1,14 @@
+{
+  "name": "conote-collaboration-server",
+  "version": "1.0.0",
+  "description": "WebSocket bridge that hosts Y.js documents for collaborative editing",
+  "main": "server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "ws": "^8.18.0",
+    "y-websocket": "1.5.4"
+  }
+}

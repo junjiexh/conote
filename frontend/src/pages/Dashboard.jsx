@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { documentAPI } from '../services/api';
 import DocumentTree from '../components/DocumentTree';
@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 import { User, Loader2, Search } from 'lucide-react';
+import { useNavigate, useParams } from 'react-router-dom';
 
 const Dashboard = () => {
   const [tree, setTree] = useState([]);
@@ -30,6 +31,8 @@ const Dashboard = () => {
   const [showSearchDialog, setShowSearchDialog] = useState(false);
   const [showUserSidebar, setShowUserSidebar] = useState(false);
   const { logout } = useAuth();
+  const navigate = useNavigate();
+  const { documentId: routeDocumentId } = useParams();
 
   useEffect(() => {
     loadDocumentTree();
@@ -46,7 +49,12 @@ const Dashboard = () => {
     }
   };
 
-  const handleSelectDocument = async (id) => {
+  const fetchDocument = useCallback(async (id) => {
+    if (!id) {
+      setActiveDocument(null);
+      setActiveDocId(null);
+      return;
+    }
     try {
       const response = await documentAPI.getById(id);
       setActiveDocument(response.data);
@@ -54,7 +62,29 @@ const Dashboard = () => {
     } catch (error) {
       console.error('Error loading document:', error);
       alert('Failed to load document');
+      navigate('/documents', { replace: true });
+      setActiveDocument(null);
+      setActiveDocId(null);
     }
+  }, [navigate]);
+
+  useEffect(() => {
+    if (routeDocumentId) {
+      if (routeDocumentId !== activeDocId) {
+        fetchDocument(routeDocumentId);
+      }
+    } else if (activeDocId) {
+      setActiveDocId(null);
+      setActiveDocument(null);
+    }
+  }, [routeDocumentId, fetchDocument, activeDocId]);
+
+  const handleNavigateToDocument = (id) => {
+    if (!id) {
+      navigate('/documents');
+      return;
+    }
+    navigate(`/documents/${id}`);
   };
 
   const openCreateDialog = (parentId = null) => {
@@ -69,7 +99,7 @@ const Dashboard = () => {
     try {
       const response = await documentAPI.create(newDocTitle, createParentId);
       await loadDocumentTree();
-      handleSelectDocument(response.data.id);
+      handleNavigateToDocument(response.data.id);
       setShowCreateDialog(false);
       setNewDocTitle('');
     } catch (error) {
@@ -106,6 +136,7 @@ const Dashboard = () => {
       if (activeDocId === id) {
         setActiveDocId(null);
         setActiveDocument(null);
+        handleNavigateToDocument(null);
       }
     } catch (error) {
       console.error('Error deleting document:', error);
@@ -132,7 +163,7 @@ const Dashboard = () => {
   };
 
   const handleSearchResultSelect = (document) => {
-    handleSelectDocument(document.id);
+    handleNavigateToDocument(document.id);
   };
 
   return (
@@ -174,7 +205,7 @@ const Dashboard = () => {
               <DocumentTree
                 tree={tree}
                 activeDocId={activeDocId}
-                onSelect={handleSelectDocument}
+                onSelect={handleNavigateToDocument}
                 onCreateRoot={handleCreateRoot}
                 onCreateChild={handleCreateChild}
                 onRename={handleRename}

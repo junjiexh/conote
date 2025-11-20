@@ -121,8 +121,8 @@ services:
       LOCKOUT_DURATION_MINUTES: 30
       PASSWORD_MIN_LENGTH: 8
     ports:
-      - "50051:50051"  # gRPC port
-      - "8081:8080"     # HTTP REST API port
+      - "50051:50051" # gRPC port
+      - "8081:8080" # HTTP REST API port
     depends_on:
       postgres:
         condition: service_healthy
@@ -175,19 +175,41 @@ services:
     networks:
       - conote-network
 
+  # Y.js Collaboration Server
+  collab-server:
+    build:
+      context: ./collab-server
+      dockerfile: Dockerfile
+    container_name: conote-collab-server
+    environment:
+      BACKEND_API_URL: http://backend:8080/api
+      COLLAB_SERVER_PORT: 1234
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "1234:1234"
+    networks:
+      - conote-network
+
   # React Frontend
   frontend:
+    profiles:
+      - "notstartyet"
     build:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        - ${VITE_API_URL:-http://localhost:8000/api}
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:8000/api}
+        VITE_COLLAB_URL: ${VITE_COLLAB_URL:-ws://collab-server:1234}
     container_name: conote-frontend
     ports:
       - "3000:80"
     depends_on:
       kong:
         condition: service_healthy
+      collab-server:
+        condition: service_started
     healthcheck:
       test:
         [

@@ -13,8 +13,9 @@ function App() {
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/" element={<Navigate to="/documents" replace />} />
           <Route
-            path="/"
+            path="/documents/:documentId?"
             element={
               <ProtectedRoute>
                 <Dashboard />
