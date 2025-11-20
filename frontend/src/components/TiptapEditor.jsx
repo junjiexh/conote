@@ -13,10 +13,9 @@ import {
   Underline as UnderlineIcon,
   Strikethrough,
   Code,
-  Undo,
-  Redo,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import "./TiptapEditor.css";
 
 const EMPTY_DOCUMENT = "<p></p>";
 const COLLAB_SERVER_URL =
@@ -35,70 +34,103 @@ const ToolbarButton = ({ onClick, active, icon: Icon, title, disabled }) => (
   </button>
 );
 
-const TiptapEditor = ({
+const TiptapEditor =
+  ({
+    value,
+    onChange,
+    className,
+    placeholder,
+    documentId,
+  }) => {
+    const [collabStatus, setCollabStatus] = useState("disconnected");
+    const { user, token } = useAuth();
+    const [ydoc, setYdoc] = useState(null);
+    const [provider, setProvider] = useState(null);
+
+    const canUseCollaboration = Boolean(COLLAB_SERVER_URL && documentId && token);
+
+    // create a fresh doc and provider on mount, and clean up on unmount
+    useEffect(() => {
+      if (!canUseCollaboration) {
+        return
+      }
+      const doc = new Y.Doc();
+      const wsProvider = new WebsocketProvider(
+        COLLAB_SERVER_URL,
+        String(documentId),
+        doc,
+        {
+          params: {
+            token,
+          },
+        },
+      );
+
+      setYdoc(doc);
+      setProvider(wsProvider);
+      // set collab status on provider status chang
+      if (!wsProvider) {
+        setCollabStatus("disconnected");
+        return undefined;
+      }
+
+      const handleStatus = ({ status }) => {
+        setCollabStatus(status);
+      };
+
+      wsProvider.on("status", handleStatus);
+      return () => {
+        wsProvider.off("status", handleStatus);
+        wsProvider.destroy();
+        doc.destroy();
+        setProvider(null);
+        setYdoc(null);
+      };
+    }, [documentId, canUseCollaboration, token]);
+
+    const collabReady =
+      !canUseCollaboration || (ydoc !== null && provider !== null);
+
+    if (!collabReady && canUseCollaboration) {
+      // just a loading UI
+      return (
+        <div className={`border rounded-lg overflow-hidden ${className || ""}`}>
+          <div className="p-4 text-sm text-muted-foreground">
+            Setting up collaboration…
+          </div>
+        </div>
+      );
+    }
+
+    // Once ready, mount the inner component which calls useEditor
+    return (
+      <TiptapEditorInner
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        className={className}
+        canUseCollaboration={canUseCollaboration}
+        ydoc={ydoc}
+        provider={provider}
+        user={user}
+        collabStatus={collabStatus}
+      />
+    );
+  }
+
+// Separate component to use hooks after collaboration setup
+const TiptapEditorInner = ({
   value,
   onChange,
-  placeholder = "Start typing...",
+  placeholder,
   className,
-  documentId,
+  canUseCollaboration,
+  ydoc,
+  provider,
+  user,
+  collabStatus,
 }) => {
   const [isEmpty, setIsEmpty] = useState(true);
-  const [collabStatus, setCollabStatus] = useState("disconnected");
-  const { user, token } = useAuth();
-
-  const canUseCollaboration = Boolean(COLLAB_SERVER_URL && documentId && token);
-
-  const ydoc = useMemo(() => {
-    if (!canUseCollaboration) {
-      return null;
-    }
-    return new Y.Doc();
-  }, [documentId, canUseCollaboration]);
-
-  // destroy ydoc on unmount
-  useEffect(() => {
-    return () => {
-      ydoc?.destroy();
-    };
-  }, [ydoc]);
-
-  const provider = useMemo(() => {
-    if (!canUseCollaboration || !ydoc) {
-      return null;
-    }
-
-    const wsProvider = new WebsocketProvider(
-      COLLAB_SERVER_URL,
-      String(documentId),
-      ydoc,
-      {
-        params: {
-          token,
-        },
-      },
-    );
-
-    return wsProvider;
-  }, [canUseCollaboration, ydoc, documentId, token]);
-
-  // set collab status on provider status change
-  useEffect(() => {
-    if (!provider) {
-      setCollabStatus("disconnected");
-      return undefined;
-    }
-
-    const handleStatus = ({ status }) => {
-      setCollabStatus(status);
-    };
-
-    provider.on("status", handleStatus);
-
-    return () => {
-      provider.off("status", handleStatus);
-      provider.destroy();
-    };
-  }, [provider]);
 
   // Swaps the built-in document store for a Yjs document
   // and configures the caret extension for remote cursors
@@ -112,14 +144,16 @@ const TiptapEditor = ({
           provider,
           user: {
             name: user?.username || user?.email || "Anonymous",
-            color:
-              user?.email?.length > 0
-                ? `hsl(${Math.abs(
-                  user.email
-                    .split("")
-                    .reduce((acc, c) => acc + c.charCodeAt(0), 0),
-                ) % 360}, 70%, 60%)`
-                : "#4f46e5",
+            color: user?.email
+              ? `#${Math.abs(
+                user.email
+                  .split("")
+                  .reduce((acc, c) => acc + c.charCodeAt(0), 0),
+              )
+                .toString(16)
+                .padStart(6, "0")
+                .slice(0, 6)}`
+              : "#4f46e5",
           },
         }),
       ]
@@ -200,18 +234,6 @@ const TiptapEditor = ({
   return (
     <div className={`border rounded-lg overflow-hidden ${className || ""}`}>
       <div className="flex items-center gap-1 p-2 border-b bg-gray-50 flex-wrap">
-        <ToolbarButton
-          onClick={() => editor.chain().focus().undo().run()}
-          icon={Undo}
-          title="Undo"
-          disabled={!editor.can().chain().focus().undo().run()}
-        />
-        <ToolbarButton
-          onClick={() => editor.chain().focus().redo().run()}
-          icon={Redo}
-          title="Redo"
-          disabled={!editor.can().chain().focus().redo().run()}
-        />
         <div className="w-px h-6 bg-gray-300 mx-1" />
         <ToolbarButton
           onClick={() => editor.chain().focus().toggleBold().run()}
