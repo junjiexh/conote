@@ -4,7 +4,7 @@ import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
 import Link from "@tiptap/extension-link";
 import Collaboration from "@tiptap/extension-collaboration";
-import CollaborationCursor from "@tiptap/extension-collaboration-cursor";
+import CollaborationCaret from "@tiptap/extension-collaboration-caret";
 import * as Y from "yjs";
 import { WebsocketProvider } from "y-websocket";
 import {
@@ -55,6 +55,7 @@ const TiptapEditor = ({
     return new Y.Doc();
   }, [documentId, canUseCollaboration]);
 
+  // destroy ydoc on unmount
   useEffect(() => {
     return () => {
       ydoc?.destroy();
@@ -80,6 +81,7 @@ const TiptapEditor = ({
     return wsProvider;
   }, [canUseCollaboration, ydoc, documentId, token]);
 
+  // set collab status on provider status change
   useEffect(() => {
     if (!provider) {
       setCollabStatus("disconnected");
@@ -98,20 +100,24 @@ const TiptapEditor = ({
     };
   }, [provider]);
 
+  // Swaps the built-in document store for a Yjs document
+  // and configures the caret extension for remote cursors
   const collaborationExtensions =
     canUseCollaboration && ydoc && provider
       ? [
         Collaboration.configure({
           document: ydoc,
         }),
-        CollaborationCursor.configure({
+        CollaborationCaret.configure({
           provider,
           user: {
             name: user?.username || user?.email || "Anonymous",
             color:
               user?.email?.length > 0
                 ? `hsl(${Math.abs(
-                  user.email.split("").reduce((acc, c) => acc + c.charCodeAt(0), 0),
+                  user.email
+                    .split("")
+                    .reduce((acc, c) => acc + c.charCodeAt(0), 0),
                 ) % 360}, 70%, 60%)`
                 : "#4f46e5",
           },
@@ -119,14 +125,22 @@ const TiptapEditor = ({
       ]
       : [];
 
+  const starterKitOptions = {
+    heading: { levels: [1, 2, 3] },
+    orderedList: { keepMarks: true },
+    bulletList: { keepMarks: true },
+    underline: false,
+    link: false,
+  };
+
+  if (canUseCollaboration) {
+    starterKitOptions.history = false;
+    starterKitOptions.undoRedo = false;
+  }
+
   const editor = useEditor({
     extensions: [
-      StarterKit.configure({
-        history: !canUseCollaboration,
-        heading: { levels: [1, 2, 3] },
-        orderedList: { keepMarks: true },
-        bulletList: { keepMarks: true },
-      }),
+      StarterKit.configure(starterKitOptions),
       Underline,
       Link.configure({
         autolink: true,
@@ -136,7 +150,7 @@ const TiptapEditor = ({
           class: "text-blue-600 underline hover:text-blue-800",
         },
       }),
-      ...collaborationExtensions,
+      ...collaborationExtensions, // apply extensions
     ],
     content:
       canUseCollaboration || !value

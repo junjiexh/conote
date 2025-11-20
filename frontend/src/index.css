@@ -190,4 +190,29 @@
         font-family:
             source-code-pro, Menlo, Monaco, Consolas, "Courier New", monospace;
     }
+
+    .collaboration-carets__caret {
+        position: relative;
+        border-left-width: 2px;
+        border-left-style: solid;
+        margin-left: -1px;
+        margin-right: -1px;
+        pointer-events: none;
+    }
+
+    .collaboration-carets__label {
+        position: absolute;
+        top: -1.4em;
+        left: -1px;
+        color: white;
+        font-size: 0.65rem;
+        font-weight: 600;
+        padding: 2px 6px;
+        border-radius: 9999px;
+        white-space: nowrap;
+    }
+
+    .collaboration-carets__selection {
+        border-radius: 2px;
+    }
 }
