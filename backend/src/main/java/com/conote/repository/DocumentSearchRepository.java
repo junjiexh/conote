@@ -11,10 +11,9 @@ import org.springframework.stereotype.Repository;
 public interface DocumentSearchRepository extends ElasticsearchRepository<DocumentSearchIndex, String> {
 
     /**
-     * Search documents by userId and query string in title or content
-     * The query searches both title and content fields with boost on title
+     * Search documents by userId and query string in title.
      */
-    @Query("{\"bool\": {\"must\": [{\"match\": {\"userId\": \"?0\"}}, {\"multi_match\": {\"query\": \"?1\", \"fields\": [\"title^2\", \"content\"], \"type\": \"best_fields\", \"fuzziness\": \"AUTO\"}}]}}")
+    @Query("{\"bool\": {\"must\": [{\"match\": {\"userId\": \"?0\"}}, {\"match\": {\"title\": {\"query\": \"?1\", \"fuzziness\": \"AUTO\"}}}]}}")
     Page<DocumentSearchIndex> searchByUserIdAndQuery(String userId, String query, Pageable pageable);
 
     /**

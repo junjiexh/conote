@@ -1,7 +1,7 @@
-.PHONY: all go java clean docker-build jib-backend docker-clean help
+.PHONY: all go java node clean docker-build jib-backend docker-clean help
 
 # Default target: generate all
-all: go java
+all: go java node
 
 # Prepare for Docker builds (generate all code)
 docker-build: all
@@ -31,16 +31,27 @@ java:
 	@echo "Generating Java code for backend..."
 	@echo "Copying proto files to backend/src/main/proto/..."
 	@mkdir -p ../backend/src/main/proto
+	@rm -rf ../backend/src/main/proto/account ../backend/src/main/proto/collab
 	@cp -r account ../backend/src/main/proto/
+	@cp -r collab ../backend/src/main/proto/
 	@cd ../backend && mvn generate-sources -q
 	@echo "✓ Java code generated in backend/target/generated-sources/protobuf/"
+
+# Prepare proto files for the collaboration server (Node)
+node:
+	@echo "Copying proto files for collaboration server..."
+	@mkdir -p ../collab-server/proto
+	@rm -rf ../collab-server/proto/collab
+	@cp -r collab ../collab-server/proto/
+	@echo "✓ Collaboration proto available under collab-server/proto/"
 
 # Clean all generated code
 clean:
 	@echo "Cleaning generated code..."
 	@rm -f ../account-service/pkg/grpc/*.pb.go
 	@rm -rf ../backend/target/generated-sources/protobuf
-	@rm -rf ../backend/src/main/proto/account
+	@rm -rf ../backend/src/main/proto/account ../backend/src/main/proto/collab
+	@rm -rf ../collab-server/proto/collab
 	@echo "✓ Cleaned all generated protobuf code"
 
 # Clean dangling Docker images
@@ -58,6 +69,7 @@ help:
 	@echo "  make all          Same as 'make'"
 	@echo "  make go           Generate Go code only"
 	@echo "  make java         Generate Java code only"
+	@echo "  make node         Copy collaboration proto for collab-server"
 	@echo "  make jib-backend  Build backend Docker image with Jib (fast, ~20s)"
 	@echo "  make docker-build Generate all code (prerequisite for docker-compose build)"
 	@echo "  make clean        Remove all generated code"

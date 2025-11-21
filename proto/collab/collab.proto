@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package collab;
+
+option java_package = "com.conote.grpc.collab";
+option java_multiple_files = true;
+option java_outer_classname = "CollaborationSnapshotProto";
+
+import "google/protobuf/empty.proto";
+
+service CollaborationSnapshotService {
+  rpc GetSnapshot(GetSnapshotRequest) returns (GetSnapshotResponse);
+  rpc SaveSnapshot(SaveSnapshotRequest) returns (google.protobuf.Empty);
+}
+
+message GetSnapshotRequest {
+  string document_id = 1;
+}
+
+message GetSnapshotResponse {
+  bytes snapshot = 1;
+  bool has_snapshot = 2;
+}
+
+message SaveSnapshotRequest {
+  string document_id = 1;
+  bytes snapshot = 2;
+}

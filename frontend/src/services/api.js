@@ -49,8 +49,7 @@ export const documentAPI = {
   getById: (id) => api.get(`/documents/${id}`),
   create: (title, parentId = null) =>
     api.post("/documents", { title, parentId }),
-  update: (id, title, content) =>
-    api.put(`/documents/${id}`, { title, content }),
+  update: (id, payload = {}) => api.put(`/documents/${id}`, payload),
   move: (id, newParentId) =>
     api.patch(`/documents/${id}/move`, { newParentId }),
   delete: (id) => api.delete(`/documents/${id}`),

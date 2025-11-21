@@ -85,7 +85,6 @@ public class DocumentService {
             node.setId(doc.getId());
             node.setParentId(doc.getParentId());
             node.setTitle(doc.getTitle());
-            node.setContent(doc.getContent());
             node.setCreatedAt(doc.getCreatedAt());
             node.setUpdatedAt(doc.getUpdatedAt());
             node.setChildren(new ArrayList<>());
@@ -139,7 +138,6 @@ public class DocumentService {
         document.setUserId(userId);
         document.setParentId(request.getParentId());
         document.setTitle(request.getTitle());
-        document.setContent("");
 
         Document savedDocument = documentRepository.save(document);
         log.info("saved document is {}", document);
@@ -166,9 +164,6 @@ public class DocumentService {
 
         if (request.getTitle() != null) {
             document.setTitle(request.getTitle());
-        }
-        if (request.getContent() != null) {
-            document.setContent(request.getContent());
         }
 
         Document savedDocument = documentRepository.save(document);
@@ -302,7 +297,6 @@ public class DocumentService {
         document.setUserId(UUID.fromString(searchIndex.getUserId()));
         document.setParentId(searchIndex.getParentId() != null ? UUID.fromString(searchIndex.getParentId()) : null);
         document.setTitle(searchIndex.getTitle());
-        document.setContent(searchIndex.getContent());
         document.setCreatedAt(searchIndex.getCreatedAt());
         document.setUpdatedAt(searchIndex.getUpdatedAt());
         return document;

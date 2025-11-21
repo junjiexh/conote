@@ -6,8 +6,10 @@ This directory contains all Protocol Buffer (protobuf) definitions used across t
 
 ```
 proto/
-└── account/
-    └── account.proto    # Account service API definition
+├── account/
+│   └── account.proto    # Account service (Go + Java)
+└── collab/
+    └── collab.proto     # Collaboration snapshot service (Java + Node)
 ```
 
 ## Usage
@@ -16,7 +18,7 @@ proto/
 
 ```bash
 cd proto
-make        # Generate code for all languages (Go + Java)
+make        # Generate code for all languages (Go + Java + Node copies)
 ```
 
 ### Individual Languages
@@ -34,6 +36,13 @@ cd proto
 make java
 ```
 Generates to: `backend/target/generated-sources/protobuf/`
+
+**Node (collab-server proto copies):**
+```bash
+cd proto
+make node
+```
+Copies to: `collab-server/proto/collab/`
 
 ### Other Commands
 

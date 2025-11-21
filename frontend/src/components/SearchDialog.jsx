@@ -8,7 +8,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle } from '@/components/ui/card';
 import { documentAPI } from '@/services/api';
 
 export default function SearchDialog({ open, onOpenChange, onSelectDocument }) {
@@ -77,14 +77,6 @@ export default function SearchDialog({ open, onOpenChange, onSelectDocument }) {
     onOpenChange(false);
   };
 
-  const highlightText = (text, maxLength = 200) => {
-    if (!text) return '';
-    const truncated = text.length > maxLength
-      ? text.substring(0, maxLength) + '...'
-      : text;
-    return truncated;
-  };
-
   const formatDate = (dateString) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', {
@@ -107,7 +99,7 @@ export default function SearchDialog({ open, onOpenChange, onSelectDocument }) {
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search by title or content..."
+              placeholder="Search by title..."
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyPress={handleKeyPress}
@@ -170,13 +162,6 @@ export default function SearchDialog({ open, onOpenChange, onSelectDocument }) {
                       </div>
                     </div>
                   </CardHeader>
-                  {doc.content && (
-                    <CardContent className="pt-0">
-                      <p className="text-sm text-muted-foreground line-clamp-3">
-                        {highlightText(doc.content, 250)}
-                      </p>
-                    </CardContent>
-                  )}
                 </Card>
               ))}
             </div>
@@ -186,7 +171,7 @@ export default function SearchDialog({ open, onOpenChange, onSelectDocument }) {
             <div className="text-center py-8 text-muted-foreground">
               <Search className="h-12 w-12 mx-auto mb-2 opacity-50" />
               <p>Enter a search query to find documents</p>
-              <p className="text-sm mt-1">Search by title or content</p>
+              <p className="text-sm mt-1">Search by title</p>
             </div>
           )}
         </div>

@@ -54,7 +54,7 @@ public class DocumentController {
     @GetMapping("/{id}")
     @Operation(
             summary = "Get document by ID",
-            description = "Returns a single document with full content by its ID. User can only access their own documents."
+            description = "Returns a single document by its ID. User can only access their own documents."
     )
     @ApiResponses(value = {
             @ApiResponse(
@@ -105,7 +105,7 @@ public class DocumentController {
     @PutMapping("/{id}")
     @Operation(
             summary = "Update document",
-            description = "Updates the title and/or content of an existing document. Only provided fields will be updated."
+            description = "Updates the document title."
     )
     @ApiResponses(value = {
             @ApiResponse(
@@ -123,7 +123,7 @@ public class DocumentController {
             @Parameter(description = "Document UUID", required = true)
             @PathVariable UUID id,
             @io.swagger.v3.oas.annotations.parameters.RequestBody(
-                    description = "Update request with optional title and content",
+                    description = "Update request with optional title",
                     required = true
             )
             @Valid @RequestBody UpdateDocumentRequest request) {

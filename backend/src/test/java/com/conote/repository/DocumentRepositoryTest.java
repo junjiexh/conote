@@ -33,12 +33,11 @@ class DocumentRepositoryTest {
         user2Id = UUID.randomUUID();
     }
 
-    private Document createDocument(UUID userId, UUID parentId, String title, String content) {
+    private Document createDocument(UUID userId, UUID parentId, String title) {
         Document doc = new Document();
         doc.setUserId(userId);
         doc.setParentId(parentId);
         doc.setTitle(title);
-        doc.setContent(content);
         return doc;
     }
 
@@ -46,7 +45,7 @@ class DocumentRepositoryTest {
     @DisplayName("Should save and retrieve document")
     void testSaveAndRetrieve() {
         // Arrange
-        Document document = createDocument(user1Id, null, "Test Document", "Test Content");
+        Document document = createDocument(user1Id, null, "Test Document");
 
         // Act
         Document saved = documentRepository.save(document);
@@ -56,7 +55,6 @@ class DocumentRepositoryTest {
         assertThat(retrieved).isNotNull();
         assertThat(retrieved.getId()).isEqualTo(saved.getId());
         assertThat(retrieved.getTitle()).isEqualTo("Test Document");
-        assertThat(retrieved.getContent()).isEqualTo("Test Content");
         assertThat(retrieved.getUserId()).isEqualTo(user1Id);
     }
 
@@ -64,9 +62,9 @@ class DocumentRepositoryTest {
     @DisplayName("Should find all documents by user ID")
     void testFindByUserId() {
         // Arrange
-        Document doc1 = createDocument(user1Id, null, "Doc 1", "Content 1");
-        Document doc2 = createDocument(user1Id, null, "Doc 2", "Content 2");
-        Document doc3 = createDocument(user2Id, null, "Doc 3", "Content 3");
+        Document doc1 = createDocument(user1Id, null, "Doc 1");
+        Document doc2 = createDocument(user1Id, null, "Doc 2");
+        Document doc3 = createDocument(user2Id, null, "Doc 3");
 
         entityManager.persist(doc1);
         entityManager.persist(doc2);
@@ -86,7 +84,7 @@ class DocumentRepositoryTest {
     @DisplayName("Should find document by ID and user ID")
     void testFindByIdAndUserId() {
         // Arrange
-        Document document = createDocument(user1Id, null, "Test Document", "Content");
+        Document document = createDocument(user1Id, null, "Test Document");
         Document saved = entityManager.persistAndFlush(document);
 
         // Act
@@ -101,7 +99,7 @@ class DocumentRepositoryTest {
     @DisplayName("Should not find document with wrong user ID")
     void testFindByIdAndUserId_WrongUser() {
         // Arrange
-        Document document = createDocument(user1Id, null, "Test Document", "Content");
+        Document document = createDocument(user1Id, null, "Test Document");
         Document saved = entityManager.persistAndFlush(document);
 
         // Act
@@ -125,10 +123,10 @@ class DocumentRepositoryTest {
     @DisplayName("Should handle parent-child relationships")
     void testParentChildRelationship() {
         // Arrange
-        Document parent = createDocument(user1Id, null, "Parent", "Parent Content");
+        Document parent = createDocument(user1Id, null, "Parent");
         Document savedParent = entityManager.persistAndFlush(parent);
 
-        Document child = createDocument(user1Id, savedParent.getId(), "Child", "Child Content");
+        Document child = createDocument(user1Id, savedParent.getId(), "Child");
         Document savedChild = entityManager.persistAndFlush(child);
 
         // Act
@@ -142,13 +140,13 @@ class DocumentRepositoryTest {
     @DisplayName("Should handle multi-level hierarchy")
     void testMultiLevelHierarchy() {
         // Arrange
-        Document root = createDocument(user1Id, null, "Root", "Root Content");
+        Document root = createDocument(user1Id, null, "Root");
         Document savedRoot = entityManager.persistAndFlush(root);
 
-        Document level1 = createDocument(user1Id, savedRoot.getId(), "Level 1", "Content");
+        Document level1 = createDocument(user1Id, savedRoot.getId(), "Level 1");
         Document savedLevel1 = entityManager.persistAndFlush(level1);
 
-        Document level2 = createDocument(user1Id, savedLevel1.getId(), "Level 2", "Content");
+        Document level2 = createDocument(user1Id, savedLevel1.getId(), "Level 2");
         Document savedLevel2 = entityManager.persistAndFlush(level2);
 
         // Act
@@ -181,7 +179,7 @@ class DocumentRepositoryTest {
     @DisplayName("Should delete document by ID")
     void testDeleteDocument() {
         // Arrange
-        Document document = createDocument(user1Id, null, "Test Document", "Content");
+        Document document = createDocument(user1Id, null, "Test Document");
         Document saved = entityManager.persistAndFlush(document);
         UUID docId = saved.getId();
 
@@ -198,12 +196,11 @@ class DocumentRepositoryTest {
     @DisplayName("Should update document content")
     void testUpdateDocument() {
         // Arrange
-        Document document = createDocument(user1Id, null, "Original Title", "Original Content");
+        Document document = createDocument(user1Id, null, "Original Title");
         Document saved = entityManager.persistAndFlush(document);
 
         // Act
         saved.setTitle("Updated Title");
-        saved.setContent("Updated Content");
         documentRepository.save(saved);
         entityManager.flush();
         entityManager.clear();
@@ -211,15 +208,14 @@ class DocumentRepositoryTest {
         // Assert
         Document updated = documentRepository.findById(saved.getId()).orElseThrow();
         assertThat(updated.getTitle()).isEqualTo("Updated Title");
-        assertThat(updated.getContent()).isEqualTo("Updated Content");
     }
 
     @Test
     @DisplayName("Should isolate documents between users")
     void testUserIsolation() {
         // Arrange
-        Document user1Doc = createDocument(user1Id, null, "User 1 Doc", "Content");
-        Document user2Doc = createDocument(user2Id, null, "User 2 Doc", "Content");
+        Document user1Doc = createDocument(user1Id, null, "User 1 Doc");
+        Document user2Doc = createDocument(user2Id, null, "User 2 Doc");
 
         entityManager.persist(user1Doc);
         entityManager.persist(user2Doc);
@@ -241,12 +237,12 @@ class DocumentRepositoryTest {
     @DisplayName("Should handle moving document to different parent")
     void testMoveDocument() {
         // Arrange
-        Document parent1 = createDocument(user1Id, null, "Parent 1", "Content");
-        Document parent2 = createDocument(user1Id, null, "Parent 2", "Content");
+        Document parent1 = createDocument(user1Id, null, "Parent 1");
+        Document parent2 = createDocument(user1Id, null, "Parent 2");
         Document savedParent1 = entityManager.persistAndFlush(parent1);
         Document savedParent2 = entityManager.persistAndFlush(parent2);
 
-        Document child = createDocument(user1Id, savedParent1.getId(), "Child", "Content");
+        Document child = createDocument(user1Id, savedParent1.getId(), "Child");
         Document savedChild = entityManager.persistAndFlush(child);
 
         // Act - Move child from parent1 to parent2
@@ -263,10 +259,10 @@ class DocumentRepositoryTest {
     @DisplayName("Should handle moving document to root level")
     void testMoveDocumentToRoot() {
         // Arrange
-        Document parent = createDocument(user1Id, null, "Parent", "Content");
+        Document parent = createDocument(user1Id, null, "Parent");
         Document savedParent = entityManager.persistAndFlush(parent);
 
-        Document child = createDocument(user1Id, savedParent.getId(), "Child", "Content");
+        Document child = createDocument(user1Id, savedParent.getId(), "Child");
         Document savedChild = entityManager.persistAndFlush(child);
 
         // Act - Move child to root
@@ -283,7 +279,7 @@ class DocumentRepositoryTest {
     @DisplayName("Should persist timestamps automatically")
     void testTimestamps() {
         // Arrange
-        Document document = createDocument(user1Id, null, "Test Document", "Content");
+        Document document = createDocument(user1Id, null, "Test Document");
 
         // Act
         Document saved = documentRepository.save(document);
@@ -298,12 +294,12 @@ class DocumentRepositoryTest {
     @DisplayName("Should find multiple children of same parent")
     void testMultipleChildren() {
         // Arrange
-        Document parent = createDocument(user1Id, null, "Parent", "Content");
+        Document parent = createDocument(user1Id, null, "Parent");
         Document savedParent = entityManager.persistAndFlush(parent);
 
-        Document child1 = createDocument(user1Id, savedParent.getId(), "Child 1", "Content");
-        Document child2 = createDocument(user1Id, savedParent.getId(), "Child 2", "Content");
-        Document child3 = createDocument(user1Id, savedParent.getId(), "Child 3", "Content");
+        Document child1 = createDocument(user1Id, savedParent.getId(), "Child 1");
+        Document child2 = createDocument(user1Id, savedParent.getId(), "Child 2");
+        Document child3 = createDocument(user1Id, savedParent.getId(), "Child 3");
 
         entityManager.persist(child1);
         entityManager.persist(child2);
@@ -326,7 +322,7 @@ class DocumentRepositoryTest {
     @DisplayName("Should handle UUID primary keys correctly")
     void testUUIDPrimaryKey() {
         // Arrange
-        Document document = createDocument(user1Id, null, "Test Document", "Content");
+        Document document = createDocument(user1Id, null, "Test Document");
 
         // Act
         Document saved = documentRepository.save(document);
@@ -336,17 +332,4 @@ class DocumentRepositoryTest {
         assertThat(saved.getId()).isInstanceOf(UUID.class);
     }
 
-    @Test
-    @DisplayName("Should handle empty content")
-    void testEmptyContent() {
-        // Arrange
-        Document document = createDocument(user1Id, null, "Title", "");
-
-        // Act
-        Document saved = entityManager.persistAndFlush(document);
-
-        // Assert
-        Document retrieved = documentRepository.findById(saved.getId()).orElseThrow();
-        assertThat(retrieved.getContent()).isEmpty();
-    }
 }

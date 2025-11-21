@@ -118,7 +118,7 @@ const Dashboard = () => {
 
   const handleRename = async (id, newTitle) => {
     try {
-      await documentAPI.update(id, newTitle, undefined);
+      await documentAPI.update(id, { title: newTitle });
       await loadDocumentTree();
       if (activeDocId === id) {
         setActiveDocument((prev) => ({ ...prev, title: newTitle }));
@@ -144,12 +144,12 @@ const Dashboard = () => {
     }
   };
 
-  const handleSaveDocument = async (id, title, content) => {
+  const handleSaveDocument = async (id, title) => {
     try {
-      await documentAPI.update(id, title, content);
+      await documentAPI.update(id, { title });
       await loadDocumentTree();
       if (activeDocId === id) {
-        setActiveDocument((prev) => ({...prev, title, content}))
+        setActiveDocument((prev) => ({...prev, title}))
       }
     } catch (error) {
       console.error('Error saving document:', error);

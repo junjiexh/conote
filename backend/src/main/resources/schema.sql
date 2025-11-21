@@ -14,7 +14,6 @@ CREATE TABLE IF NOT EXISTS documents (
     user_id UUID NOT NULL,
     parent_id UUID, -- Can be NULL for root-level documents
     title VARCHAR(255) NOT NULL,
-    content TEXT, -- The actual text content of the document
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
 
@@ -56,8 +55,7 @@ CREATE INDEX IF NOT EXISTS idx_doc_search ON documents USING GIN (search_vector)
 CREATE OR REPLACE FUNCTION documents_search_vector_update() RETURNS trigger AS $$
 BEGIN
     NEW.search_vector :=
-        setweight(to_tsvector('english', COALESCE(NEW.title, '')), 'A') ||
-        setweight(to_tsvector('english', COALESCE(NEW.content, '')), 'B');
+        setweight(to_tsvector('english', COALESCE(NEW.title, '')), 'A');
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
@@ -65,7 +63,14 @@ $$ LANGUAGE plpgsql;
 -- Trigger to keep search_vector updated
 DROP TRIGGER IF EXISTS documents_search_vector_trigger ON documents;
 CREATE TRIGGER documents_search_vector_trigger
-    BEFORE INSERT OR UPDATE OF title, content
+    BEFORE INSERT OR UPDATE OF title
     ON documents
     FOR EACH ROW
     EXECUTE FUNCTION documents_search_vector_update();
+
+-- Collaborative snapshot storage
+CREATE TABLE IF NOT EXISTS document_collab_snapshots (
+    document_id UUID PRIMARY KEY REFERENCES documents(id) ON DELETE CASCADE,
+    snapshot BYTEA NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);

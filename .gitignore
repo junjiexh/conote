@@ -34,5 +34,6 @@ Thumbs.db
 **/*.pb.go
 **/generated-sources/protobuf/
 backend/src/main/proto/
+collab-server/proto/
 
 */node_modules/*

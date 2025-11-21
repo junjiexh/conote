@@ -28,9 +28,6 @@ public class DocumentSearchIndex {
     @Field(type = FieldType.Text, analyzer = "standard")
     private String title;
 
-    @Field(type = FieldType.Text, analyzer = "html_strip_analyzer")
-    private String content;
-
     @Field(type = FieldType.Date, format = DateFormat.date_hour_minute_second_millis)
     private LocalDateTime createdAt;
 
@@ -44,7 +41,6 @@ public class DocumentSearchIndex {
         index.setUserId(document.getUserId().toString());
         index.setParentId(document.getParentId() != null ? document.getParentId().toString() : null);
         index.setTitle(document.getTitle());
-        index.setContent(document.getContent());
         index.setCreatedAt(document.getCreatedAt());
         index.setUpdatedAt(document.getUpdatedAt());
         return index;

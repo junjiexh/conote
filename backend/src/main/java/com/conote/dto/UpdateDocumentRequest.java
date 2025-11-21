@@ -11,5 +11,4 @@ import java.util.UUID;
 @AllArgsConstructor
 public class UpdateDocumentRequest {
     private String title;
-    private String content;
 }

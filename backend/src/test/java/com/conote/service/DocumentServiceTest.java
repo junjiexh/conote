@@ -57,16 +57,15 @@ class DocumentServiceTest {
 
         when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.of(testUser));
 
-        testDocument = createTestDocument(UUID.randomUUID(), null, "Test Document", "Content");
+        testDocument = createTestDocument(UUID.randomUUID(), null, "Test Document");
     }
 
-    private Document createTestDocument(UUID id, UUID parentId, String title, String content) {
+    private Document createTestDocument(UUID id, UUID parentId, String title) {
         Document doc = new Document();
         doc.setId(id);
         doc.setUserId(userId);
         doc.setParentId(parentId);
         doc.setTitle(title);
-        doc.setContent(content);
         doc.setCreatedAt(LocalDateTime.now());
         doc.setUpdatedAt(LocalDateTime.now());
         return doc;
@@ -80,9 +79,9 @@ class DocumentServiceTest {
         UUID childId = UUID.randomUUID();
         UUID grandchildId = UUID.randomUUID();
 
-        Document root = createTestDocument(rootId, null, "Root", "Root content");
-        Document child = createTestDocument(childId, rootId, "Child", "Child content");
-        Document grandchild = createTestDocument(grandchildId, childId, "Grandchild", "Grandchild content");
+        Document root = createTestDocument(rootId, null, "Root");
+        Document child = createTestDocument(childId, rootId, "Child");
+        Document grandchild = createTestDocument(grandchildId, childId, "Grandchild");
 
         List<Document> documents = Arrays.asList(root, child, grandchild);
         when(documentRepository.findByUserId(userId)).thenReturn(documents);
@@ -106,8 +105,8 @@ class DocumentServiceTest {
     @DisplayName("Should handle multiple root documents")
     void testGetDocumentTree_MultipleRoots() {
         // Arrange
-        Document root1 = createTestDocument(UUID.randomUUID(), null, "Root 1", "Content 1");
-        Document root2 = createTestDocument(UUID.randomUUID(), null, "Root 2", "Content 2");
+        Document root1 = createTestDocument(UUID.randomUUID(), null, "Root 1");
+        Document root2 = createTestDocument(UUID.randomUUID(), null, "Root 2");
 
         when(documentRepository.findByUserId(userId)).thenReturn(Arrays.asList(root1, root2));
 
@@ -170,7 +169,7 @@ class DocumentServiceTest {
         request.setTitle("New Document");
         request.setParentId(null);
 
-        Document savedDocument = createTestDocument(UUID.randomUUID(), null, "New Document", "");
+        Document savedDocument = createTestDocument(UUID.randomUUID(), null, "New Document");
         when(documentRepository.save(any(Document.class))).thenReturn(savedDocument);
 
         // Act
@@ -180,7 +179,6 @@ class DocumentServiceTest {
         assertThat(result).isNotNull();
         assertThat(result.getTitle()).isEqualTo("New Document");
         assertThat(result.getParentId()).isNull();
-        assertThat(result.getContent()).isEmpty();
 
         verify(documentRepository).save(any(Document.class));
     }
@@ -190,7 +188,7 @@ class DocumentServiceTest {
     void testCreateDocument_ChildDocument() {
         // Arrange
         UUID parentId = UUID.randomUUID();
-        Document parentDoc = createTestDocument(parentId, null, "Parent", "Content");
+        Document parentDoc = createTestDocument(parentId, null, "Parent");
 
         CreateDocumentRequest request = new CreateDocumentRequest();
         request.setTitle("Child Document");
@@ -198,7 +196,7 @@ class DocumentServiceTest {
 
         when(documentRepository.findByIdAndUserId(parentId, userId)).thenReturn(Optional.of(parentDoc));
 
-        Document savedDocument = createTestDocument(UUID.randomUUID(), parentId, "Child Document", "");
+        Document savedDocument = createTestDocument(UUID.randomUUID(), parentId, "Child Document");
         when(documentRepository.save(any(Document.class))).thenReturn(savedDocument);
 
         // Act
@@ -250,53 +248,14 @@ class DocumentServiceTest {
     }
 
     @Test
-    @DisplayName("Should update document content successfully")
-    void testUpdateDocument_Content() {
-        // Arrange
-        UUID docId = testDocument.getId();
-        UpdateDocumentRequest request = new UpdateDocumentRequest();
-        request.setContent("Updated Content");
-
-        when(documentRepository.findByIdAndUserId(docId, userId)).thenReturn(Optional.of(testDocument));
-        when(documentRepository.save(testDocument)).thenReturn(testDocument);
-
-        // Act
-        Document result = documentService.updateDocument(docId, request);
-
-        // Assert
-        assertThat(result.getContent()).isEqualTo("Updated Content");
-        verify(documentRepository).save(testDocument);
-    }
-
-    @Test
-    @DisplayName("Should update both title and content")
-    void testUpdateDocument_TitleAndContent() {
-        // Arrange
-        UUID docId = testDocument.getId();
-        UpdateDocumentRequest request = new UpdateDocumentRequest();
-        request.setTitle("New Title");
-        request.setContent("New Content");
-
-        when(documentRepository.findByIdAndUserId(docId, userId)).thenReturn(Optional.of(testDocument));
-        when(documentRepository.save(testDocument)).thenReturn(testDocument);
-
-        // Act
-        Document result = documentService.updateDocument(docId, request);
-
-        // Assert
-        assertThat(result.getTitle()).isEqualTo("New Title");
-        assertThat(result.getContent()).isEqualTo("New Content");
-    }
-
-    @Test
     @DisplayName("Should move document to new parent successfully")
     void testMoveDocument_Success() {
         // Arrange
         UUID docId = UUID.randomUUID();
         UUID newParentId = UUID.randomUUID();
 
-        Document doc = createTestDocument(docId, null, "Document", "Content");
-        Document newParent = createTestDocument(newParentId, null, "New Parent", "Content");
+        Document doc = createTestDocument(docId, null, "Document");
+        Document newParent = createTestDocument(newParentId, null, "New Parent");
 
         MoveDocumentRequest request = new MoveDocumentRequest();
         request.setNewParentId(newParentId);
@@ -318,7 +277,7 @@ class DocumentServiceTest {
     void testMoveDocument_ToRoot() {
         // Arrange
         UUID docId = UUID.randomUUID();
-        Document doc = createTestDocument(docId, UUID.randomUUID(), "Document", "Content");
+        Document doc = createTestDocument(docId, UUID.randomUUID(), "Document");
 
         MoveDocumentRequest request = new MoveDocumentRequest();
         request.setNewParentId(null);
@@ -341,8 +300,8 @@ class DocumentServiceTest {
         UUID parentId = UUID.randomUUID();
         UUID childId = UUID.randomUUID();
 
-        Document parent = createTestDocument(parentId, null, "Parent", "Content");
-        Document child = createTestDocument(childId, parentId, "Child", "Content");
+        Document parent = createTestDocument(parentId, null, "Parent");
+        Document child = createTestDocument(childId, parentId, "Child");
 
         // Try to move parent under child (would create A -> B -> A cycle)
         MoveDocumentRequest request = new MoveDocumentRequest();
@@ -366,9 +325,9 @@ class DocumentServiceTest {
         UUID cId = UUID.randomUUID();
 
         // A -> B -> C, trying to move A under C (would create A -> B -> C -> A)
-        Document a = createTestDocument(aId, null, "A", "Content");
-        Document b = createTestDocument(bId, aId, "B", "Content");
-        Document c = createTestDocument(cId, bId, "C", "Content");
+        Document a = createTestDocument(aId, null, "A");
+        Document b = createTestDocument(bId, aId, "B");
+        Document c = createTestDocument(cId, bId, "C");
 
         MoveDocumentRequest request = new MoveDocumentRequest();
         request.setNewParentId(cId);
@@ -391,9 +350,9 @@ class DocumentServiceTest {
         UUID child1Id = UUID.randomUUID();
         UUID child2Id = UUID.randomUUID();
 
-        Document parent = createTestDocument(parentId, null, "Parent", "Content");
-        Document child1 = createTestDocument(child1Id, parentId, "Child 1", "Content");
-        Document child2 = createTestDocument(child2Id, parentId, "Child 2", "Content");
+        Document parent = createTestDocument(parentId, null, "Parent");
+        Document child1 = createTestDocument(child1Id, parentId, "Child 1");
+        Document child2 = createTestDocument(child2Id, parentId, "Child 2");
 
         // Move child1 under child2 (valid move)
         MoveDocumentRequest request = new MoveDocumentRequest();
@@ -418,7 +377,7 @@ class DocumentServiceTest {
         UUID docId = UUID.randomUUID();
         UUID newParentId = UUID.randomUUID();
 
-        Document doc = createTestDocument(docId, null, "Document", "Content");
+        Document doc = createTestDocument(docId, null, "Document");
 
         MoveDocumentRequest request = new MoveDocumentRequest();
         request.setNewParentId(newParentId);

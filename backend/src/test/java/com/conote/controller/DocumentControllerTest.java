@@ -60,14 +60,12 @@ class DocumentControllerTest {
         testDocument.setId(testDocId);
         testDocument.setUserId(UUID.randomUUID());
         testDocument.setTitle("Test Document");
-        testDocument.setContent("Test Content");
         testDocument.setCreatedAt(LocalDateTime.now());
         testDocument.setUpdatedAt(LocalDateTime.now());
 
         testTreeNode = new DocumentTreeNode();
         testTreeNode.setId(testDocId);
         testTreeNode.setTitle("Test Document");
-        testTreeNode.setContent("Test Content");
         testTreeNode.setChildren(Collections.emptyList());
     }
 
@@ -85,8 +83,7 @@ class DocumentControllerTest {
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$", hasSize(1)))
                 .andExpect(jsonPath("$[0].id").value(testDocId.toString()))
-                .andExpect(jsonPath("$[0].title").value("Test Document"))
-                .andExpect(jsonPath("$[0].content").value("Test Content"));
+                .andExpect(jsonPath("$[0].title").value("Test Document"));
 
         verify(documentService).getDocumentTree();
     }
@@ -116,8 +113,7 @@ class DocumentControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.id").value(testDocId.toString()))
-                .andExpect(jsonPath("$.title").value("Test Document"))
-                .andExpect(jsonPath("$.content").value("Test Content"));
+                .andExpect(jsonPath("$.title").value("Test Document"));
 
         verify(documentService).getDocument(testDocId);
     }
@@ -205,12 +201,10 @@ class DocumentControllerTest {
         // Arrange
         UpdateDocumentRequest request = new UpdateDocumentRequest();
         request.setTitle("Updated Title");
-        request.setContent("Updated Content");
 
         Document updatedDoc = new Document();
         updatedDoc.setId(testDocId);
         updatedDoc.setTitle("Updated Title");
-        updatedDoc.setContent("Updated Content");
 
         when(documentService.updateDocument(eq(testDocId), any(UpdateDocumentRequest.class)))
                 .thenReturn(updatedDoc);
@@ -222,7 +216,6 @@ class DocumentControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.title").value("Updated Title"))
-                .andExpect(jsonPath("$.content").value("Updated Content"));
 
         verify(documentService).updateDocument(eq(testDocId), any(UpdateDocumentRequest.class));
     }

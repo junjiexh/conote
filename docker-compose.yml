@@ -139,6 +139,9 @@ services:
   backend:
     image: conote-backend:latest
     container_name: conote-backend
+    expose:
+      - "8080"
+      - "9090"
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-conote}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-postgres}
@@ -184,6 +187,7 @@ services:
     environment:
       BACKEND_API_URL: http://backend:8080/api
       COLLAB_SERVER_PORT: 1234
+      COLLAB_GRPC_ADDRESS: backend:9090
     depends_on:
       backend:
         condition: service_healthy

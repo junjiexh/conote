@@ -16,7 +16,6 @@ public class DocumentTreeNode {
     private UUID id;
     private UUID parentId;
     private String title;
-    private String content;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private List<DocumentTreeNode> children = new ArrayList<>();

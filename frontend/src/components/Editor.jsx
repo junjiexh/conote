@@ -7,35 +7,25 @@ import TiptapEditor from './TiptapEditor';
 
 const Editor = ({ document, onSave }) => {
   const [title, setTitle] = useState('');
-  const [content, setContent] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState(null);
-  const [hasChanges, setHasChanges] = useState(false);
 
   useEffect(() => {
     if (document) {
       setTitle(document.title || '');
-      setContent(document.content || '');
-      setHasChanges(false);
+      setLastSaved(null);
     }
   }, [document]);
 
-  useEffect(() => {
-    if (document && (title !== document.title || content !== document.content)) {
-      setHasChanges(true);
-    } else {
-      setHasChanges(false);
-    }
-  }, [title, content, document]);
+  const hasTitleChanges = document && title !== (document.title || '');
 
   const handleSave = async () => {
-    if (!document || !hasChanges) return;
+    if (!document || !hasTitleChanges) return;
 
     setIsSaving(true);
     try {
-      await onSave(document.id, title, content);
+      await onSave(document.id, title);
       setLastSaved(new Date());
-      setHasChanges(false);
     } catch (error) {
       console.error('Error saving document:', error);
       alert('Failed to save document');
@@ -81,11 +71,11 @@ const Editor = ({ document, onSave }) => {
           )}
           <Button
             onClick={handleSave}
-            disabled={!hasChanges || isSaving}
-            variant={hasChanges ? "default" : "secondary"}
+            disabled={!hasTitleChanges || isSaving}
+            variant={hasTitleChanges ? "default" : "secondary"}
             className="ml-auto"
           >
-            {isSaving ? 'Saving...' : hasChanges ? 'Save (Ctrl+S)' : 'Saved'}
+            {isSaving ? 'Saving...' : hasTitleChanges ? 'Save Title (Ctrl+S)' : 'Title Saved'}
           </Button>
         </div>
         <Separator />
@@ -95,8 +85,6 @@ const Editor = ({ document, onSave }) => {
         <TiptapEditor
           key={document.id}
           className="w-full h-full text-base"
-          value={document.content}
-          onChange={(newContent) => setContent(newContent)}
           placeholder="Start typing..."
           documentId={document.id}
         />
