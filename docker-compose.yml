@@ -142,6 +142,8 @@ services:
     expose:
       - "8080"
       - "9090"
+    ports:
+      - "9090:9090"
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-conote}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-postgres}

@@ -7,6 +7,11 @@ const grpc = require('@grpc/grpc-js');
 const protoLoader = require('@grpc/proto-loader');
 const googleProtoFiles = require('google-proto-files');
 
+/**
+ * @typedef {import('./proto/collab').ProtoGrpcType} ProtoGrpcType
+ * @typedef {import('./proto/collab/GetSnapshotRequest').GetSnapshotRequest} GetSnapshotRequest
+ */
+
 const DEFAULT_PORT = parseInt(process.env.COLLAB_SERVER_PORT || process.env.PORT || '1234', 10);
 const HOST = process.env.HOST || '0.0.0.0';
 const BACKEND_API_URL = process.env.BACKEND_API_URL || 'http://localhost:8000/api';
@@ -22,7 +27,10 @@ const packageDefinition = protoLoader.loadSync(PROTO_PATH, {
   defaults: true,
   oneofs: true,
 });
-const collabProto = grpc.loadPackageDefinition(packageDefinition).collab;
+
+/** @type {ProtoGrpcType} */
+const proto = (grpc.loadPackageDefinition(packageDefinition));
+const collabProto = proto.collab;
 const snapshotClient = new collabProto.CollaborationSnapshotService(
   GRPC_ADDRESS,
   grpc.credentials.createInsecure(),
@@ -36,14 +44,21 @@ const encodeDocumentState = (ydoc) => {
 };
 
 const saveSnapshot = (documentId, ydoc) => {
+  if (!documentId) {
+    console.warn('[collab] skip saveSnapshot: empty documentId');
+    return Promise.resolve();
+  }
   const payload = encodeDocumentState(ydoc);
+  console.info(`[collab] saveSnapshot -> id=${documentId} bytes=${payload.length}`);
   return new Promise((resolve, reject) => {
     snapshotClient.saveSnapshot(
-      { document_id: documentId, snapshot: payload },
+      { documentId: documentId, snapshot: payload },
       (err) => {
         if (err) {
+          console.error(`[collab] saveSnapshot failed ${documentId}`, err);
           reject(err);
         } else {
+          console.info(`[collab] saveSnapshot <- ok id=${documentId}`);
           resolve();
         }
       },
@@ -51,16 +66,27 @@ const saveSnapshot = (documentId, ydoc) => {
   });
 };
 
-const getSnapshot = (documentId) =>
-  new Promise((resolve, reject) => {
-    snapshotClient.getSnapshot({ document_id: documentId }, (err, res) => {
+const getSnapshot = (documentId) => {
+  if (!documentId) {
+    console.warn('[collab] skip getSnapshot: empty documentId');
+    return Promise.resolve(null);
+  }
+  console.info(`[collab] getSnapshot -> id=${documentId}`);
+  return new Promise((resolve, reject) => {
+    snapshotClient.getSnapshot({ documentId: documentId }, (err, res) => {
       if (err) {
+        console.error(`[collab] getSnapshot failed ${documentId}`, err);
         reject(err);
       } else {
+        console.info(
+          `[collab] getSnapshot <- id=${documentId} hasSnapshot=${res?.hasSnapshot} bytes=${res?.snapshot?.length || 0
+          }`,
+        );
         resolve(res);
       }
     });
   });
+};
 
 const scheduleSave = (documentId, ydoc) => {
   let state = persistState.get(documentId);
@@ -84,9 +110,13 @@ const scheduleSave = (documentId, ydoc) => {
 
 setPersistence({
   bindState: async (docName, ydoc) => {
+    if (!docName) {
+      console.warn('[collab] bindState invoked with empty docName');
+      return;
+    }
     try {
       const response = await getSnapshot(docName);
-      if (response && response.has_snapshot && response.snapshot && response.snapshot.length) {
+      if (response && response.hasSnapshot && response.snapshot && response.snapshot.length) {
         Y.applyUpdate(ydoc, new Uint8Array(response.snapshot));
       }
     } catch (error) {
@@ -110,6 +140,10 @@ setPersistence({
     });
   },
   writeState: async (docName, ydoc) => {
+    if (!docName) {
+      console.warn('[collab] writeState invoked with empty docName');
+      return;
+    }
     try {
       await saveSnapshot(docName, ydoc);
     } catch (error) {
@@ -156,7 +190,7 @@ const extractConnectionParams = (req) => {
   const requestUrl = new URL(req.url, 'http://localhost');
   const pathSegments = requestUrl.pathname.split('/').filter(Boolean);
   return {
-    documentId: pathSegments[0],
+    documentId: pathSegments[0]?.trim(),
     token: requestUrl.searchParams.get('token'),
   };
 };

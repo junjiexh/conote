@@ -21,7 +21,6 @@ public class DocumentSnapshot {
     @Column(name = "document_id")
     private UUID documentId;
 
-    @Lob
     @Column(name = "snapshot", nullable = false, columnDefinition = "bytea")
     private byte[] snapshot;
 

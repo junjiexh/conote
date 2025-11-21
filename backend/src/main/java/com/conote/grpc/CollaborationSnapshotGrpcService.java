@@ -36,8 +36,9 @@ public class CollaborationSnapshotGrpcService extends CollaborationSnapshotServi
             responseObserver.onNext(builder.build());
             responseObserver.onCompleted();
         } catch (IllegalArgumentException ex) {
+            log.warn("Invalid document_id received for snapshot fetch: {}", request.getDocumentId(), ex);
             responseObserver.onError(Status.INVALID_ARGUMENT
-                    .withDescription("Invalid document_id")
+                    .withDescription("Invalid document_id: " + request.getDocumentId())
                     .withCause(ex)
                     .asRuntimeException());
         } catch (Exception ex) {
@@ -58,8 +59,9 @@ public class CollaborationSnapshotGrpcService extends CollaborationSnapshotServi
             responseObserver.onNext(Empty.getDefaultInstance());
             responseObserver.onCompleted();
         } catch (IllegalArgumentException ex) {
+            log.warn("Invalid document_id received for snapshot save: {}", request.getDocumentId(), ex);
             responseObserver.onError(Status.INVALID_ARGUMENT
-                    .withDescription("Invalid document_id")
+                    .withDescription("Invalid document_id: " + request.getDocumentId())
                     .withCause(ex)
                     .asRuntimeException());
         } catch (ResourceNotFoundException notFound) {

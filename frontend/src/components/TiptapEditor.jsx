@@ -139,6 +139,7 @@ const TiptapEditorInner = ({
       ? [
         Collaboration.configure({
           document: ydoc,
+          field: "prosemirror",
         }),
         CollaborationCaret.configure({
           provider,
