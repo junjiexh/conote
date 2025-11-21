@@ -1,13 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -18,12 +11,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Plus, Search, MoreVertical, Edit, Trash2, Share2, FileText, ChevronLeft, Menu } from 'lucide-react';
-import NoteCard from './NoteCard';
+import { Plus, Search, FileText, ChevronLeft, Menu } from 'lucide-react';
+import NoteTreeItem from './NoteTreeItem';
 import NavigationLinks from './NavigationLinks';
 import UserProfileFooter from './UserProfileFooter';
 import ShareDialog from './ShareDialog';
-import { enrichDocumentWithMockData, flattenTree, filterDocuments, getRelativeTime } from '@/lib/mockData';
+import { enrichTree, filterTree } from '@/lib/mockData';
 
 const NoteSidebar = ({
   tree,
@@ -45,33 +38,63 @@ const NoteSidebar = ({
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleteDocId, setDeleteDocId] = useState(null);
   const [deleteDocTitle, setDeleteDocTitle] = useState('');
-  const [renamingDocId, setRenamingDocId] = useState(null);
-  const [renameValue, setRenameValue] = useState('');
 
-  // Enrich tree with mock data and flatten
-  const enrichedDocuments = useMemo(() => {
-    const flattened = flattenTree(tree);
-    return flattened.map((doc, index) => ({
-      ...enrichDocumentWithMockData(doc, index),
-      lastModified: getRelativeTime(enrichDocumentWithMockData(doc, index).lastModified),
-    }));
+  // Expansion state
+  const [expandedNodes, setExpandedNodes] = useState({});
+
+  // Enrich tree with mock data recursively
+  const enrichedTree = useMemo(() => {
+    return enrichTree(tree);
   }, [tree]);
 
   // Filter and search
-  const filteredDocuments = useMemo(() => {
-    let docs = filterDocuments(enrichedDocuments, activeFilter);
+  const filteredTree = useMemo(() => {
+    let nodes = enrichedTree;
 
+    // 1. Filter by category (favorites, shared, etc.)
+    if (activeFilter !== 'all') {
+      nodes = filterTree(nodes, (doc) => {
+        if (activeFilter === 'favorites') return doc.starred;
+        if (activeFilter === 'shared') return doc.collaborators && doc.collaborators.length > 0;
+        return true;
+      });
+    }
+
+    // 2. Filter by search query
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
-      docs = docs.filter(
-        doc =>
-          doc.title.toLowerCase().includes(query) ||
-          (doc.content && doc.content.toLowerCase().includes(query))
+      nodes = filterTree(nodes, (doc) =>
+        doc.title.toLowerCase().includes(query) ||
+        (doc.content && doc.content.toLowerCase().includes(query))
       );
     }
 
-    return docs;
-  }, [enrichedDocuments, activeFilter, searchQuery]);
+    return nodes;
+  }, [enrichedTree, activeFilter, searchQuery]);
+
+  // Auto-expand nodes when searching
+  useEffect(() => {
+    if (searchQuery.trim()) {
+      const getAllIds = (nodes) => {
+        let ids = {};
+        nodes.forEach(node => {
+          ids[node.id] = true;
+          if (node.children) {
+            ids = { ...ids, ...getAllIds(node.children) };
+          }
+        });
+        return ids;
+      };
+      setExpandedNodes(getAllIds(filteredTree));
+    }
+  }, [searchQuery, filteredTree]);
+
+  const toggleExpansion = (docId) => {
+    setExpandedNodes(prev => ({
+      ...prev,
+      [docId]: !prev[docId]
+    }));
+  };
 
   const handleShare = (docId, docTitle) => {
     setShareDocId(docId);
@@ -94,30 +117,11 @@ const NoteSidebar = ({
     }
   };
 
-  const handleRenameStart = (docId, currentTitle) => {
-    setRenamingDocId(docId);
-    setRenameValue(currentTitle);
-  };
-
-  const handleRenameSubmit = () => {
-    if (renamingDocId && renameValue.trim() && renameValue !== filteredDocuments.find(d => d.id === renamingDocId)?.title) {
-      onRename(renamingDocId, renameValue);
-    }
-    setRenamingDocId(null);
-    setRenameValue('');
-  };
-
-  const handleRenameCancel = () => {
-    setRenamingDocId(null);
-    setRenameValue('');
-  };
-
   return (
     <>
       <aside
-        className={`${
-          isOpen ? 'translate-x-0' : '-translate-x-full'
-        } fixed md:relative z-40 w-72 h-full bg-slate-50 border-r border-slate-200 flex flex-col transition-transform duration-300 ease-in-out shadow-xl md:shadow-none`}
+        className={`${isOpen ? 'translate-x-0' : '-translate-x-full'
+          } fixed md:relative z-40 w-72 h-full bg-slate-50 border-r border-slate-200 flex flex-col transition-transform duration-300 ease-in-out shadow-xl md:shadow-none`}
       >
         {/* Sidebar Header */}
         <div className="p-4 border-b border-slate-100 flex items-center justify-between">
@@ -166,76 +170,24 @@ const NoteSidebar = ({
           <h3 className="px-3 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">
             {activeFilter === 'all' ? 'Recent' : activeFilter}
           </h3>
-          {filteredDocuments.length === 0 ? (
+          {filteredTree.length === 0 ? (
             <div className="px-4 py-8 text-center text-slate-400 text-sm">
               No notes found.
             </div>
           ) : (
-            filteredDocuments.map((doc) => (
-              <div key={doc.id} className="group relative">
-                {renamingDocId === doc.id ? (
-                  <div className="p-3">
-                    <Input
-                      type="text"
-                      value={renameValue}
-                      onChange={(e) => setRenameValue(e.target.value)}
-                      onBlur={handleRenameSubmit}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') handleRenameSubmit();
-                        if (e.key === 'Escape') handleRenameCancel();
-                      }}
-                      autoFocus
-                      className="text-sm"
-                    />
-                  </div>
-                ) : (
-                  <>
-                    <NoteCard
-                      note={doc}
-                      isActive={activeDocId === doc.id}
-                      onClick={() => onSelect(doc.id)}
-                      level={doc.level}
-                    />
-                    {/* Context Menu Button */}
-                    <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6 bg-white/90 hover:bg-white shadow-sm"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => onCreateChild(doc.id)}>
-                            <Plus className="mr-2 h-4 w-4" />
-                            Add Child
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleRenameStart(doc.id, doc.title)}>
-                            <Edit className="mr-2 h-4 w-4" />
-                            Rename
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleShare(doc.id, doc.title)}>
-                            <Share2 className="mr-2 h-4 w-4" />
-                            Share
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            className="text-destructive"
-                            onClick={() => handleDeletePrompt(doc.id, doc.title)}
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  </>
-                )}
-              </div>
+            filteredTree.map((doc) => (
+              <NoteTreeItem
+                key={doc.id}
+                note={doc}
+                activeDocId={activeDocId}
+                onSelect={onSelect}
+                onToggleExpansion={toggleExpansion}
+                expandedNodes={expandedNodes}
+                onCreateChild={onCreateChild}
+                onRename={onRename}
+                onDelete={handleDeletePrompt}
+                onShare={handleShare}
+              />
             ))
           )}
         </div>
@@ -288,3 +240,4 @@ const NoteSidebar = ({
 };
 
 export default NoteSidebar;
+

@@ -90,3 +90,37 @@ export const filterDocuments = (documents, filter) => {
       return documents;
   }
 };
+
+// Recursively enrich the tree
+export const enrichTree = (nodes) => {
+  return nodes.map((node, index) => {
+    const enriched = enrichDocumentWithMockData(node, index);
+    if (node.children && node.children.length > 0) {
+      enriched.children = enrichTree(node.children);
+    }
+    return enriched;
+  });
+};
+
+// Recursively filter the tree
+export const filterTree = (nodes, filterFn) => {
+  return nodes.reduce((acc, node) => {
+    const matches = filterFn(node);
+    let children = [];
+
+    if (node.children && node.children.length > 0) {
+      children = filterTree(node.children, filterFn);
+    }
+
+    // Keep node if it matches OR if it has matching children
+    if (matches || children.length > 0) {
+      acc.push({
+        ...node,
+        children: children
+      });
+    }
+
+    return acc;
+  }, []);
+};
+
