@@ -13,6 +13,10 @@ import {
   Underline as UnderlineIcon,
   Strikethrough,
   Code,
+  List,
+  CheckSquare,
+  Link as LinkIcon,
+  Image as ImageIcon,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import "./TiptapEditor.css";
@@ -21,16 +25,16 @@ const EMPTY_DOCUMENT = "<p></p>";
 const COLLAB_SERVER_URL =
   import.meta.env.VITE_COLLAB_URL || "ws://localhost:1234";
 
-const ToolbarButton = ({ onClick, active, icon: Icon, title, disabled }) => (
+const ToolbarButton = ({ onClick, active, icon: Icon, title, disabled, children }) => (
   <button
     type="button"
     onClick={onClick}
     disabled={disabled}
-    className={`p-2 rounded hover:bg-gray-200 transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${active ? "bg-gray-300" : ""
+    className={`p-1.5 rounded hover:bg-white hover:shadow-sm text-slate-600 transition-all disabled:opacity-40 disabled:cursor-not-allowed ${active ? "bg-white shadow-sm" : ""
       }`}
     title={title}
   >
-    <Icon size={18} />
+    {children || <Icon size={16} />}
   </button>
 );
 
@@ -233,62 +237,88 @@ const TiptapEditorInner = ({
   }
 
   return (
-    <div className={`border rounded-lg overflow-hidden ${className || ""}`}>
-      <div className="flex items-center gap-1 p-2 border-b bg-gray-50 flex-wrap">
-        <div className="w-px h-6 bg-gray-300 mx-1" />
-        <ToolbarButton
-          onClick={() => editor.chain().focus().toggleBold().run()}
-          active={editor.isActive("bold")}
-          icon={Bold}
-          title="Bold"
-          disabled={!editor.can().chain().focus().toggleBold().run()}
-        />
-        <ToolbarButton
-          onClick={() => editor.chain().focus().toggleItalic().run()}
-          active={editor.isActive("italic")}
-          icon={Italic}
-          title="Italic"
-          disabled={!editor.can().chain().focus().toggleItalic().run()}
-        />
-        <ToolbarButton
-          onClick={() => editor.chain().focus().toggleUnderline().run()}
-          active={editor.isActive("underline")}
-          icon={UnderlineIcon}
-          title="Underline"
-          disabled={!editor.can().chain().focus().toggleUnderline().run()}
-        />
-        <ToolbarButton
-          onClick={() => editor.chain().focus().toggleStrike().run()}
-          active={editor.isActive("strike")}
-          icon={Strikethrough}
-          title="Strikethrough"
-          disabled={!editor.can().chain().focus().toggleStrike().run()}
-        />
-        <ToolbarButton
-          onClick={() => editor.chain().focus().toggleCode().run()}
-          active={editor.isActive("code")}
-          icon={Code}
-          title="Code"
-          disabled={!editor.can().chain().focus().toggleCode().run()}
-        />
-        {canUseCollaboration && (
-          <div className="ml-auto text-xs text-muted-foreground">
-            {collabStatus === "connected"
-              ? "Collaborative editing active"
-              : "Connecting collaboration…"}
-          </div>
-        )}
+    <div className={`${className || ""}`}>
+      {/* Floating/Sticky Toolbar */}
+      <div className="sticky top-0 bg-white/80 backdrop-blur-sm z-10 flex items-center gap-1 overflow-x-auto no-scrollbar pb-3 border-b border-slate-50">
+        <div className="flex items-center gap-0.5 bg-slate-50 p-1 rounded-lg border border-slate-100">
+          <ToolbarButton
+            onClick={() => editor.chain().focus().toggleBold().run()}
+            active={editor.isActive("bold")}
+            icon={Bold}
+            title="Bold"
+            disabled={!editor.can().chain().focus().toggleBold().run()}
+          />
+          <ToolbarButton
+            onClick={() => editor.chain().focus().toggleItalic().run()}
+            active={editor.isActive("italic")}
+            icon={Italic}
+            title="Italic"
+            disabled={!editor.can().chain().focus().toggleItalic().run()}
+          />
+          <ToolbarButton
+            onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
+            active={editor.isActive("heading", { level: 1 })}
+            title="Heading 1"
+            disabled={!editor.can().chain().focus().toggleHeading({ level: 1 }).run()}
+          >
+            <span className="font-serif font-bold text-sm px-0.5">H1</span>
+          </ToolbarButton>
+          <ToolbarButton
+            onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
+            active={editor.isActive("heading", { level: 2 })}
+            title="Heading 2"
+            disabled={!editor.can().chain().focus().toggleHeading({ level: 2 }).run()}
+          >
+            <span className="font-serif font-bold text-sm px-0.5">H2</span>
+          </ToolbarButton>
+        </div>
+        <div className="w-px h-6 bg-slate-200 mx-2"></div>
+        <div className="flex items-center gap-0.5 bg-slate-50 p-1 rounded-lg border border-slate-100">
+          <ToolbarButton
+            onClick={() => editor.chain().focus().toggleBulletList().run()}
+            active={editor.isActive("bulletList")}
+            icon={List}
+            title="Bullet List"
+            disabled={!editor.can().chain().focus().toggleBulletList().run()}
+          />
+          <ToolbarButton
+            onClick={() => editor.chain().focus().toggleOrderedList().run()}
+            active={editor.isActive("orderedList")}
+            icon={CheckSquare}
+            title="Ordered List"
+            disabled={!editor.can().chain().focus().toggleOrderedList().run()}
+          />
+          <ToolbarButton
+            onClick={() => {
+              const url = window.prompt("Enter URL:");
+              if (url) {
+                editor.chain().focus().setLink({ href: url }).run();
+              }
+            }}
+            active={editor.isActive("link")}
+            icon={LinkIcon}
+            title="Insert Link"
+          />
+          <ToolbarButton
+            onClick={() => alert("Image upload not implemented")}
+            icon={ImageIcon}
+            title="Insert Image"
+          />
+        </div>
+        <div className="flex-1"></div>
+        <span className="text-xs text-slate-300 font-mono">Markdown Supported</span>
       </div>
 
-      <div className="relative bg-background">
+      {/* Editor Content */}
+      <div className="relative bg-white">
         {isEmpty && (
-          <div className="absolute top-4 left-4 text-gray-400 pointer-events-none select-none">
+          <div className="absolute top-0 left-0 text-slate-300 pointer-events-none select-none text-lg font-serif">
             {placeholder}
           </div>
         )}
         <EditorContent
           editor={editor}
-          className="min-h-[200px] p-4 outline-none leading-relaxed"
+          className="min-h-[500px] outline-none text-lg leading-relaxed text-slate-600 font-serif"
         />
       </div>
     </div>

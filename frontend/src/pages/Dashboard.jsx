@@ -1,10 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { documentAPI } from '../services/api';
-import DocumentTree from '../components/DocumentTree';
+import NoteSidebar from '../components/NoteSidebar';
 import Editor from '../components/Editor';
-import SearchDialog from '../components/SearchDialog';
-import { UserSidebar } from '../components/UserSidebar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -16,8 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Separator } from '@/components/ui/separator';
-import { User, Loader2, Search } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 
 const Dashboard = () => {
@@ -28,8 +25,7 @@ const Dashboard = () => {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [newDocTitle, setNewDocTitle] = useState('');
   const [createParentId, setCreateParentId] = useState(null);
-  const [showSearchDialog, setShowSearchDialog] = useState(false);
-  const [showUserSidebar, setShowUserSidebar] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const { logout } = useAuth();
   const navigate = useNavigate();
   const { documentId: routeDocumentId } = useParams();
@@ -162,63 +158,35 @@ const Dashboard = () => {
     window.location.href = '/login';
   };
 
-  const handleSearchResultSelect = (document) => {
-    handleNavigateToDocument(document.id);
-  };
-
   return (
-    <div className="h-screen flex flex-col bg-background">
-      <header className="border-b bg-card">
-        <div className="flex justify-between items-center p-4">
-          <h1 className="text-2xl font-bold text-primary">Conote</h1>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setShowSearchDialog(true)}
-            >
-              <Search className="mr-2 h-4 w-4" />
-              Search
-            </Button>
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => setShowUserSidebar(true)}
-              aria-label="User menu"
-            >
-              <User className="h-4 w-4" />
-            </Button>
+    <div className="h-screen flex bg-gray-50 text-slate-900 overflow-hidden">
+      {loading ? (
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center text-muted-foreground flex items-center gap-2">
+            <Loader2 className="h-8 w-8 animate-spin" />
+            <span>Loading...</span>
           </div>
         </div>
-        <Separator />
-      </header>
+      ) : (
+        <>
+          <NoteSidebar
+            tree={tree}
+            activeDocId={activeDocId}
+            onSelect={handleNavigateToDocument}
+            onCreateRoot={handleCreateRoot}
+            onCreateChild={handleCreateChild}
+            onRename={handleRename}
+            onDelete={handleDelete}
+            onLogout={handleLogout}
+            isOpen={sidebarOpen}
+            onToggle={() => setSidebarOpen(!sidebarOpen)}
+          />
 
-      <div className="flex-1 flex overflow-hidden">
-        <aside className="w-80 border-r bg-muted/30 flex flex-col">
-          {/* Document Tree Section */}
-          <div className="flex-1 overflow-y-auto">
-            {loading ? (
-              <div className="p-4 text-center text-muted-foreground flex items-center justify-center gap-2">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Loading...
-              </div>
-            ) : (
-              <DocumentTree
-                tree={tree}
-                activeDocId={activeDocId}
-                onSelect={handleNavigateToDocument}
-                onCreateRoot={handleCreateRoot}
-                onCreateChild={handleCreateChild}
-                onRename={handleRename}
-                onDelete={handleDelete}
-              />
-            )}
-          </div>
-        </aside>
-
-        <main className="flex-1 overflow-hidden">
-          <Editor document={activeDocument} onSave={handleSaveDocument} />
-        </main>
-      </div>
+          <main className="flex-1 min-w-0 bg-white relative">
+            <Editor document={activeDocument} onSave={handleSaveDocument} />
+          </main>
+        </>
+      )}
 
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
         <DialogContent>
@@ -253,17 +221,6 @@ const Dashboard = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      <SearchDialog
-        open={showSearchDialog}
-        onOpenChange={setShowSearchDialog}
-        onSelectDocument={handleSearchResultSelect}
-      />
-
-      <UserSidebar
-        open={showUserSidebar}
-        onOpenChange={setShowUserSidebar}
-      />
     </div>
   );
 };

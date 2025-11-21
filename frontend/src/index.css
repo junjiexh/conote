@@ -4,42 +4,42 @@
 
 @layer base {
     :root {
-        --background: oklch(1 0 0);
-        --foreground: oklch(0.23 0 325.86);
-        --card: oklch(0.98 0 0);
-        --card-foreground: oklch(0.23 0 325.86);
-        --popover: oklch(0.98 0 0);
-        --popover-foreground: oklch(0.23 0 325.86);
-        --primary: oklch(0.37 0.14 323.23);
+        --background: oklch(0.99 0 0);
+        --foreground: oklch(0.25 0.01 264);
+        --card: oklch(1 0 0);
+        --card-foreground: oklch(0.25 0.01 264);
+        --popover: oklch(1 0 0);
+        --popover-foreground: oklch(0.25 0.01 264);
+        --primary: oklch(0.53 0.17 264);
         --primary-foreground: oklch(1 0 0);
-        --secondary: oklch(0.96 0.01 312.56);
-        --secondary-foreground: oklch(0.31 0.11 327.07);
-        --muted: oklch(0.97 0 264.7);
-        --muted-foreground: oklch(0.49 0 0);
-        --accent: oklch(0.88 0.02 323.34);
-        --accent-foreground: oklch(0.31 0.11 327.07);
+        --secondary: oklch(0.97 0.005 264);
+        --secondary-foreground: oklch(0.35 0.02 264);
+        --muted: oklch(0.97 0.005 264);
+        --muted-foreground: oklch(0.45 0.01 264);
+        --accent: oklch(0.97 0.01 264);
+        --accent-foreground: oklch(0.35 0.02 264);
         --destructive: oklch(0.59 0.22 11.5);
-        --border: oklch(0.91 0 0);
-        --input: oklch(0.91 0 0);
-        --ring: oklch(0.37 0.14 323.23);
-        --chart-1: oklch(0.31 0.11 327.07);
-        --chart-2: oklch(0.37 0.14 323.23);
-        --chart-3: oklch(0.59 0.22 11.5);
-        --chart-4: oklch(0.77 0.13 223.19);
-        --chart-5: oklch(0.69 0.14 160.23);
-        --sidebar: oklch(0.96 0.01 312.56);
-        --sidebar-foreground: oklch(0.23 0 325.86);
-        --sidebar-primary: oklch(0.37 0.14 323.23);
+        --border: oklch(0.93 0.005 264);
+        --input: oklch(0.93 0.005 264);
+        --ring: oklch(0.53 0.17 264);
+        --chart-1: oklch(0.53 0.17 264);
+        --chart-2: oklch(0.67 0.15 160);
+        --chart-3: oklch(0.75 0.14 50);
+        --chart-4: oklch(0.63 0.15 300);
+        --chart-5: oklch(0.59 0.22 11.5);
+        --sidebar: oklch(0.98 0.003 264);
+        --sidebar-foreground: oklch(0.35 0.02 264);
+        --sidebar-primary: oklch(0.53 0.17 264);
         --sidebar-primary-foreground: oklch(1 0 0);
-        --sidebar-accent: oklch(0.88 0.02 323.34);
-        --sidebar-accent-foreground: oklch(0.31 0.11 327.07);
-        --sidebar-border: oklch(0.91 0 0);
-        --sidebar-ring: oklch(0.37 0.14 323.23);
+        --sidebar-accent: oklch(0.96 0.01 264);
+        --sidebar-accent-foreground: oklch(0.35 0.02 264);
+        --sidebar-border: oklch(0.93 0.005 264);
+        --sidebar-ring: oklch(0.53 0.17 264);
         --destructive-foreground: oklch(1 0 0);
-        --font-sans: Lato, sans-serif;
-        --font-serif: Merriweather, serif;
-        --font-mono: Roboto Mono, monospace;
-        --radius: 0.5rem;
+        --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
+        --font-serif: "Merriweather", Georgia, serif;
+        --font-mono: "Roboto Mono", Consolas, "Courier New", monospace;
+        --radius: 0.75rem;
         --shadow-2xs: 0px 4px 8px -1px hsl(0 0% 0% / 0.05);
         --shadow-xs: 0px 4px 8px -1px hsl(0 0% 0% / 0.05);
         --shadow-sm:
@@ -62,42 +62,42 @@
     }
 
     .dark {
-        --background: oklch(0.23 0.01 255.6);
+        --background: oklch(0.20 0.01 264);
         --foreground: oklch(0.93 0 0);
-        --card: oklch(0.26 0.01 255.58);
+        --card: oklch(0.23 0.01 264);
         --card-foreground: oklch(0.93 0 0);
-        --popover: oklch(0.26 0.01 255.58);
+        --popover: oklch(0.23 0.01 264);
         --popover-foreground: oklch(0.93 0 0);
-        --primary: oklch(0.58 0.14 327.21);
+        --primary: oklch(0.60 0.17 264);
         --primary-foreground: oklch(1 0 0);
-        --secondary: oklch(0.3 0.01 248.05);
+        --secondary: oklch(0.28 0.01 264);
         --secondary-foreground: oklch(0.93 0 0);
-        --muted: oklch(0.26 0.01 255.58);
-        --muted-foreground: oklch(0.68 0 0);
-        --accent: oklch(0.33 0.03 326.23);
+        --muted: oklch(0.28 0.01 264);
+        --muted-foreground: oklch(0.65 0 0);
+        --accent: oklch(0.30 0.02 264);
         --accent-foreground: oklch(0.93 0 0);
         --destructive: oklch(0.59 0.22 11.5);
-        --border: oklch(0.3 0.01 268.37);
-        --input: oklch(0.3 0.01 268.37);
-        --ring: oklch(0.58 0.14 327.21);
-        --chart-1: oklch(0.58 0.14 327.21);
-        --chart-2: oklch(0.77 0.13 223.19);
-        --chart-3: oklch(0.69 0.14 160.23);
-        --chart-4: oklch(0.59 0.22 11.5);
-        --chart-5: oklch(0.8 0.15 82.64);
-        --sidebar: oklch(0.23 0.01 255.6);
+        --border: oklch(0.32 0.01 264);
+        --input: oklch(0.32 0.01 264);
+        --ring: oklch(0.60 0.17 264);
+        --chart-1: oklch(0.60 0.17 264);
+        --chart-2: oklch(0.67 0.15 160);
+        --chart-3: oklch(0.75 0.14 50);
+        --chart-4: oklch(0.63 0.15 300);
+        --chart-5: oklch(0.59 0.22 11.5);
+        --sidebar: oklch(0.20 0.01 264);
         --sidebar-foreground: oklch(0.93 0 0);
-        --sidebar-primary: oklch(0.58 0.14 327.21);
+        --sidebar-primary: oklch(0.60 0.17 264);
         --sidebar-primary-foreground: oklch(1 0 0);
-        --sidebar-accent: oklch(0.33 0.03 326.23);
+        --sidebar-accent: oklch(0.30 0.02 264);
         --sidebar-accent-foreground: oklch(0.93 0 0);
-        --sidebar-border: oklch(0.3 0.01 268.37);
-        --sidebar-ring: oklch(0.58 0.14 327.21);
+        --sidebar-border: oklch(0.32 0.01 264);
+        --sidebar-ring: oklch(0.60 0.17 264);
         --destructive-foreground: oklch(1 0 0);
-        --font-sans: Lato, sans-serif;
-        --font-serif: Merriweather, serif;
-        --font-mono: Roboto Mono, monospace;
-        --radius: 0.5rem;
+        --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
+        --font-serif: "Merriweather", Georgia, serif;
+        --font-mono: "Roboto Mono", Consolas, "Courier New", monospace;
+        --radius: 0.75rem;
         --shadow-2xs: 0px 4px 8px -1px hsl(0 0% 0% / 0.05);
         --shadow-xs: 0px 4px 8px -1px hsl(0 0% 0% / 0.05);
         --shadow-sm:
@@ -214,5 +214,15 @@
 
     .collaboration-carets__selection {
         border-radius: 2px;
+    }
+}
+
+@layer utilities {
+    .no-scrollbar::-webkit-scrollbar {
+        display: none;
+    }
+    .no-scrollbar {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
     }
 }

@@ -1,27 +1,94 @@
-/* copied from https://tiptap.dev/docs/editor/extensions/functionality/collaboration-caret */
-/* Basic editor styles */
+/* Tiptap Editor Custom Styles */
 .tiptap {
+    outline: none;
+
     :first-child {
         margin-top: 0;
     }
 
-    /* Placeholder (at the top) */
+    /* Placeholder styling */
     p.is-editor-empty:first-child::before {
-        color: var(--gray-4);
+        color: rgb(203 213 225);
         content: attr(data-placeholder);
         float: left;
         height: 0;
         pointer-events: none;
     }
 
+    /* Typography */
     p {
-        word-break: break-all;
+        margin: 0.75em 0;
+        line-height: 1.75;
+        word-break: break-word;
     }
 
-    /* Give a remote user a caret */
+    h1 {
+        font-size: 2em;
+        font-weight: 700;
+        line-height: 1.2;
+        margin: 1.5em 0 0.5em;
+        color: rgb(15 23 42);
+    }
+
+    h2 {
+        font-size: 1.5em;
+        font-weight: 600;
+        line-height: 1.3;
+        margin: 1.25em 0 0.5em;
+        color: rgb(15 23 42);
+    }
+
+    h3 {
+        font-size: 1.25em;
+        font-weight: 600;
+        line-height: 1.4;
+        margin: 1em 0 0.5em;
+        color: rgb(15 23 42);
+    }
+
+    /* Lists */
+    ul, ol {
+        padding-left: 1.5em;
+        margin: 0.75em 0;
+    }
+
+    li {
+        margin: 0.25em 0;
+    }
+
+    /* Inline formatting */
+    strong {
+        font-weight: 700;
+        color: rgb(15 23 42);
+    }
+
+    em {
+        font-style: italic;
+    }
+
+    code {
+        background-color: rgb(241 245 249);
+        border-radius: 0.25rem;
+        padding: 0.125rem 0.375rem;
+        font-family: 'Roboto Mono', monospace;
+        font-size: 0.875em;
+        color: rgb(79 70 229);
+    }
+
+    a {
+        color: rgb(79 70 229);
+        text-decoration: underline;
+        cursor: pointer;
+    }
+
+    a:hover {
+        color: rgb(99 102 241);
+    }
+
+    /* Collaboration carets */
     .collaboration-carets__caret {
-        border-left: 1px solid #0d0d0d;
-        border-right: 1px solid #0d0d0d;
+        border-left: 2px solid #0d0d0d;
+        border-right: 2px solid #0d0d0d;
         margin-left: -1px;
         margin-right: -1px;
         pointer-events: none;
@@ -29,19 +96,23 @@
         word-break: normal;
     }
 
-    /* Render the username above the caret */
     .collaboration-carets__label {
-        border-radius: 3px 3px 3px 0;
-        color: #0d0d0d;
-        font-size: 12px;
+        border-radius: 6px;
+        color: white;
+        font-size: 11px;
         font-style: normal;
         font-weight: 600;
         left: -1px;
         line-height: normal;
-        padding: 0.1rem 0.3rem;
+        padding: 2px 6px;
         position: absolute;
-        top: -1.4em;
+        top: -1.5em;
         user-select: none;
         white-space: nowrap;
+    }
+
+    .collaboration-carets__selection {
+        opacity: 0.3;
+        border-radius: 2px;
     }
 }
