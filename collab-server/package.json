@@ -6,14 +6,19 @@
   "type": "commonjs",
   "scripts": {
     "start": "node server.js",
-    "proto:gen": "proto-loader-gen-types --longs=String --enums=String --defaults --oneofs --grpcLib=@grpc/grpc-js --outDir=proto/ proto/collab/*.proto"
+    "proto:gen": "proto-loader-gen-types --longs=String --enums=String --defaults --oneofs --grpcLib=@grpc/grpc-js --outDir=proto/ proto/collab/*.proto",
+    "test": "jest"
   },
   "dependencies": {
     "@grpc/grpc-js": "^1.11.0",
     "@grpc/proto-loader": "^0.7.15",
+    "@types/jest": "^30.0.0",
     "google-proto-files": "^2.2.0",
     "ws": "^8.18.0",
     "y-websocket": "1.5.4",
     "yjs": "^13.6.15"
+  },
+  "devDependencies": {
+    "jest": "^30.2.0"
   }
 }

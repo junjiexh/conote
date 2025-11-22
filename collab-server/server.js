@@ -1,7 +1,7 @@
 const http = require('http');
 const path = require('path');
 const { WebSocketServer } = require('ws');
-const { setupWSConnection, setPersistence } = require('y-websocket/bin/utils');
+const { setupWSConnection, setPersistence } = require('./lib/yws');
 const Y = require('yjs');
 const grpc = require('@grpc/grpc-js');
 const protoLoader = require('@grpc/proto-loader');
