@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "WebSocket bridge that hosts Y.js documents for collaborative editing",
   "main": "server.js",
-  "type": "commonjs",
+  "type": "module",
   "scripts": {
     "start": "node server.js",
     "proto:gen": "proto-loader-gen-types --longs=String --enums=String --defaults --oneofs --grpcLib=@grpc/grpc-js --outDir=proto/ proto/collab/*.proto",
@@ -12,13 +12,20 @@
   "dependencies": {
     "@grpc/grpc-js": "^1.11.0",
     "@grpc/proto-loader": "^0.7.15",
+    "@types/ioredis": "^4.28.10",
+    "@types/ioredis-mock": "^8.2.6",
     "@types/jest": "^30.0.0",
+    "babel-jest": "^30.2.0",
     "google-proto-files": "^2.2.0",
+    "ioredis": "^5.8.2",
+    "ts-jest": "^29.4.5",
     "ws": "^8.18.0",
     "y-websocket": "1.5.4",
     "yjs": "^13.6.15"
   },
   "devDependencies": {
+    "@babel/preset-env": "^7.28.5",
+    "ioredis-mock": "^8.13.1",
     "jest": "^30.2.0"
   }
 }

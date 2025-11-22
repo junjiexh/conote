@@ -1,12 +1,8 @@
-const { EventEmitter } = require('events');
-const Y = require('yjs');
+import { jest, describe, test, expect, afterEach } from '@jest/globals';
+import { EventEmitter } from 'events';
+import { Doc, encodeStateAsUpdate } from 'yjs';
 
-const {
-  setupWSConnection,
-  docs,
-  events,
-  serverId,
-} = require('../lib/yws');
+import { setupWSConnection, docs, events, serverId } from '../lib/yws/index.js';
 
 const createMockConnection = (label) => {
   const emitter = new EventEmitter();
@@ -84,9 +80,9 @@ describe('yws pubsub hooks', () => {
     connA.send.mockClear();
     connB.send.mockClear();
 
-    const remoteDoc = new Y.Doc();
+    const remoteDoc = new Doc();
     remoteDoc.getText('content').insert(0, 'remote');
-    const remoteUpdate = Y.encodeStateAsUpdate(remoteDoc);
+    const remoteUpdate = encodeStateAsUpdate(remoteDoc);
 
     events.emit('doc:deliver', {
       docName,

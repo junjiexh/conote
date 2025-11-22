@@ -1,11 +1,12 @@
-const http = require('http');
-const path = require('path');
-const { WebSocketServer } = require('ws');
-const { setupWSConnection, setPersistence } = require('./lib/yws');
-const Y = require('yjs');
-const grpc = require('@grpc/grpc-js');
-const protoLoader = require('@grpc/proto-loader');
-const googleProtoFiles = require('google-proto-files');
+import { createServer } from 'http';
+import { resolve as _resolve, dirname } from 'path';
+import { WebSocketServer } from 'ws';
+import * as yws from './lib/yws';
+const { setupWSConnection, setPersistence } = yws;
+import { encodeStateAsUpdate, applyUpdate } from 'yjs';
+import { loadPackageDefinition, credentials } from '@grpc/grpc-js';
+import { loadSync } from '@grpc/proto-loader';
+import { getProtoPath } from 'google-proto-files';
 
 /**
  * @typedef {import('./proto/collab').ProtoGrpcType} ProtoGrpcType
@@ -18,10 +19,10 @@ const BACKEND_API_URL = process.env.BACKEND_API_URL || 'http://localhost:8000/ap
 const GRPC_ADDRESS = process.env.COLLAB_GRPC_ADDRESS || 'localhost:9090';
 const SNAPSHOT_FLUSH_INTERVAL = parseInt(process.env.SNAPSHOT_FLUSH_INTERVAL || '2000', 10);
 const PROTO_PATH = process.env.COLLAB_PROTO_PATH
-  || path.resolve(__dirname, 'proto/collab/collab.proto');
+  || _resolve(__dirname, 'proto/collab/collab.proto');
 
-const packageDefinition = protoLoader.loadSync(PROTO_PATH, {
-  includeDirs: [path.dirname(PROTO_PATH), googleProtoFiles.getProtoPath('..')],
+const packageDefinition = loadSync(PROTO_PATH, {
+  includeDirs: [dirname(PROTO_PATH), getProtoPath('..')],
   longs: String,
   enums: String,
   defaults: true,
@@ -29,17 +30,17 @@ const packageDefinition = protoLoader.loadSync(PROTO_PATH, {
 });
 
 /** @type {ProtoGrpcType} */
-const proto = (grpc.loadPackageDefinition(packageDefinition));
+const proto = (loadPackageDefinition(packageDefinition));
 const collabProto = proto.collab;
 const snapshotClient = new collabProto.CollaborationSnapshotService(
   GRPC_ADDRESS,
-  grpc.credentials.createInsecure(),
+  credentials.createInsecure(),
 );
 
 const persistState = new Map();
 
 const encodeDocumentState = (ydoc) => {
-  const update = Y.encodeStateAsUpdate(ydoc);
+  const update = encodeStateAsUpdate(ydoc);
   return Buffer.from(update);
 };
 
@@ -117,7 +118,7 @@ setPersistence({
     try {
       const response = await getSnapshot(docName);
       if (response && response.hasSnapshot && response.snapshot && response.snapshot.length) {
-        Y.applyUpdate(ydoc, new Uint8Array(response.snapshot));
+        applyUpdate(ydoc, new Uint8Array(response.snapshot));
       }
     } catch (error) {
       console.error(`Failed to load snapshot for ${docName}`, error);
@@ -160,7 +161,7 @@ setPersistence({
 
 const healthResponse = JSON.stringify({ status: 'ok' });
 
-const server = http.createServer((req, res) => {
+const server = createServer((req, res) => {
   if (req.url === '/health') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(healthResponse);

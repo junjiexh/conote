@@ -1,10 +1,10 @@
-const { request } = require('http')
+import { request } from 'http'
 
 const CALLBACK_URL = process.env.CALLBACK_URL ? new URL(process.env.CALLBACK_URL) : null
 const CALLBACK_TIMEOUT = process.env.CALLBACK_TIMEOUT || 5000
 const CALLBACK_OBJECTS = process.env.CALLBACK_OBJECTS ? JSON.parse(process.env.CALLBACK_OBJECTS) : {}
 
-exports.isCallbackSet = !!CALLBACK_URL
+export const isCallbackSet = !!CALLBACK_URL
 
 /**
  * Called by utils.js after a delay when a document update is received
@@ -14,7 +14,7 @@ exports.isCallbackSet = !!CALLBACK_URL
  * @param {any} origin
  * @param {WSSharedDoc} doc
  */
-exports.callbackHandler = function callbackHandler(update, origin, doc) {
+export function callbackHandler(update, origin, doc) {
   const room = doc.name
   const dataToSend = {
     room,
@@ -36,7 +36,7 @@ exports.callbackHandler = function callbackHandler(update, origin, doc) {
  * @param {number} timeout
  * @param {Object} data
  */
-exports.callbackRequest = function callbackRequest(url, timeout, data) {
+export function callbackRequest(url, timeout, data) {
   data = JSON.stringify(data)
   const options = {
     hostname: url.hostname,

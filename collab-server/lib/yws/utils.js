@@ -1,20 +1,21 @@
-const os = require('os')
-const Y = require('yjs')
-const syncProtocol = require('y-protocols/dist/sync.cjs')
-const awarenessProtocol = require('y-protocols/dist/awareness.cjs')
+import { hostname } from 'os'
+import { encodeStateAsUpdate, applyUpdate, Doc } from 'yjs'
+import { writeUpdate, readSyncMessage, writeSyncStep1 } from 'y-protocols/dist/sync.cjs'
+import { Awareness, encodeAwarenessUpdate, applyAwarenessUpdate, removeAwarenessStates } from 'y-protocols/dist/awareness.cjs'
 
-const encoding = require('lib0/dist/encoding.cjs')
-const decoding = require('lib0/dist/decoding.cjs')
-const map = require('lib0/dist/map.cjs')
+import { createEncoder, writeVarUint, toUint8Array, writeVarUint8Array, length } from 'lib0/dist/encoding.cjs'
+import { createDecoder, readVarUint, readVarUint8Array } from 'lib0/dist/decoding.cjs'
+import { setIfUndefined } from 'lib0/dist/map.cjs'
 
-const debounce = require('lodash.debounce')
+import debounce from 'lodash.debounce'
 
-const events = require('./events')
-const callbackHandler = require('./callback.js').callbackHandler
-const isCallbackSet = require('./callback.js').isCallbackSet
+import bus from './events.js'
+import { callbackHandler } from './callback.js'
+import { isCallbackSet } from './callback.js'
 
-const serverId = process.env.COLLAB_SERVER_ID || `${os.hostname()}-${process.pid}`
-exports.serverId = serverId
+const serverId = process.env.COLLAB_SERVER_ID || `${hostname()}-${process.pid}`
+const _serverId = serverId
+export { _serverId as serverId }
 
 const CALLBACK_DEBOUNCE_WAIT = parseInt(process.env.CALLBACK_DEBOUNCE_WAIT) || 2000
 const CALLBACK_DEBOUNCE_MAXWAIT = parseInt(process.env.CALLBACK_DEBOUNCE_MAXWAIT) || 10000
@@ -40,9 +41,9 @@ if (typeof persistenceDir === 'string') {
     provider: ldb,
     bindState: async (docName, ydoc) => {
       const persistedYdoc = await ldb.getYDoc(docName)
-      const newUpdates = Y.encodeStateAsUpdate(ydoc)
+      const newUpdates = encodeStateAsUpdate(ydoc)
       ldb.storeUpdate(docName, newUpdates)
-      Y.applyUpdate(ydoc, Y.encodeStateAsUpdate(persistedYdoc))
+      applyUpdate(ydoc, encodeStateAsUpdate(persistedYdoc))
       ydoc.on('update', update => {
         ldb.storeUpdate(docName, update)
       })
@@ -55,7 +56,7 @@ if (typeof persistenceDir === 'string') {
  * @param {{bindState: function(string,WSSharedDoc):void,
  * writeState:function(string,WSSharedDoc):Promise<any>,provider:any}|null} persistence_
  */
-exports.setPersistence = persistence_ => {
+export function setPersistence(persistence_) {
   persistence = persistence_
 }
 
@@ -63,27 +64,29 @@ exports.setPersistence = persistence_ => {
  * @return {null|{bindState: function(string,WSSharedDoc):void,
   * writeState:function(string,WSSharedDoc):Promise<any>}|null} used persistence layer
   */
-exports.getPersistence = () => persistence
+export function getPersistence() { return persistence }
 
 /**
  * @type {Map<string,WSSharedDoc>}
  */
 const docs = new Map()
 // exporting docs so that others can use it
-exports.docs = docs
+const _docs = docs
+export { _docs as docs }
 
 const messageSync = 0
 const messageAwareness = 1
 // const messageAuth = 2
 
 const REMOTE_ORIGIN = Symbol('redis-deliver')
-exports.REMOTE_ORIGIN = REMOTE_ORIGIN
+const _REMOTE_ORIGIN = REMOTE_ORIGIN
+export { _REMOTE_ORIGIN as REMOTE_ORIGIN }
 
 const encodeSyncUpdateMessage = update => {
-  const encoder = encoding.createEncoder()
-  encoding.writeVarUint(encoder, messageSync)
-  syncProtocol.writeUpdate(encoder, update)
-  return encoding.toUint8Array(encoder)
+  const encoder = createEncoder()
+  writeVarUint(encoder, messageSync)
+  writeUpdate(encoder, update)
+  return toUint8Array(encoder)
 }
 
 const broadcastEncodedMessage = (doc, message) => {
@@ -97,11 +100,11 @@ const broadcastEncodedMessage = (doc, message) => {
  */
 const updateHandler = (update, origin, doc) => {
   const message = encodeSyncUpdateMessage(update)
-  if (origin === REMOTE_ORIGIN) {
+  if (origin === REMOTE_ORIGIN) { // remote delivery, skip publish doc:publish to avoid rebroadcast
     broadcastEncodedMessage(doc, message)
     return
   }
-  events.emit('doc:publish', {
+  bus.emit('doc:publish', {
     docName: doc.name,
     update,
     message,
@@ -109,7 +112,7 @@ const updateHandler = (update, origin, doc) => {
   })
 }
 
-class WSSharedDoc extends Y.Doc {
+class WSSharedDoc extends Doc {
   /**
    * @param {string} name
    */
@@ -124,7 +127,7 @@ class WSSharedDoc extends Y.Doc {
     /**
      * @type {awarenessProtocol.Awareness}
      */
-    this.awareness = new awarenessProtocol.Awareness(this)
+    this.awareness = new Awareness(this)
     this.awareness.setLocalState(null)
     /**
      * @param {{ added: Array<number>, updated: Array<number>, removed: Array<number> }} changes
@@ -140,10 +143,10 @@ class WSSharedDoc extends Y.Doc {
         }
       }
       // broadcast awareness update
-      const encoder = encoding.createEncoder()
-      encoding.writeVarUint(encoder, messageAwareness)
-      encoding.writeVarUint8Array(encoder, awarenessProtocol.encodeAwarenessUpdate(this.awareness, changedClients))
-      const buff = encoding.toUint8Array(encoder)
+      const encoder = createEncoder()
+      writeVarUint(encoder, messageAwareness)
+      writeVarUint8Array(encoder, encodeAwarenessUpdate(this.awareness, changedClients))
+      const buff = toUint8Array(encoder)
       this.conns.forEach((_, c) => {
         send(this, c, buff)
       })
@@ -167,7 +170,7 @@ class WSSharedDoc extends Y.Doc {
  * @param {boolean} gc - whether to allow gc on the doc (applies only when created)
  * @return {WSSharedDoc}
  */
-const getYDoc = (docname, gc = true) => map.setIfUndefined(docs, docname, () => {
+const getYDoc = (docname, gc = true) => setIfUndefined(docs, docname, () => {
   const doc = new WSSharedDoc(docname)
   doc.gc = gc
   if (persistence !== null) {
@@ -177,7 +180,8 @@ const getYDoc = (docname, gc = true) => map.setIfUndefined(docs, docname, () => 
   return doc
 })
 
-exports.getYDoc = getYDoc
+const _getYDoc = getYDoc
+export { _getYDoc as getYDoc }
 
 /**
  * @param {{ docName: string, update: Uint8Array, serverId?: string }} payload
@@ -195,13 +199,13 @@ const handleDeliverEvent = payload => {
     return
   }
   try {
-    Y.applyUpdate(doc, update, REMOTE_ORIGIN)
+    applyUpdate(doc, update, REMOTE_ORIGIN)
   } catch (err) {
     console.error(`Failed to apply remote update for ${docName}`, err)
   }
 }
 
-events.on('doc:deliver', handleDeliverEvent)
+bus.on('doc:deliver', handleDeliverEvent)
 
 /**
  * @param {any} conn
@@ -210,23 +214,23 @@ events.on('doc:deliver', handleDeliverEvent)
  */
 const messageListener = (conn, doc, message) => {
   try {
-    const encoder = encoding.createEncoder()
-    const decoder = decoding.createDecoder(message)
-    const messageType = decoding.readVarUint(decoder)
+    const encoder = createEncoder()
+    const decoder = createDecoder(message)
+    const messageType = readVarUint(decoder)
     switch (messageType) {
       case messageSync:
-        encoding.writeVarUint(encoder, messageSync)
-        syncProtocol.readSyncMessage(decoder, encoder, doc, conn)
+        writeVarUint(encoder, messageSync)
+        readSyncMessage(decoder, encoder, doc, conn)
 
         // If the `encoder` only contains the type of reply message and no
         // message, there is no need to send the message. When `encoder` only
         // contains the type of reply, its length is 1.
-        if (encoding.length(encoder) > 1) {
-          send(doc, conn, encoding.toUint8Array(encoder))
+        if (length(encoder) > 1) {
+          send(doc, conn, toUint8Array(encoder))
         }
         break
       case messageAwareness: {
-        awarenessProtocol.applyAwarenessUpdate(doc.awareness, decoding.readVarUint8Array(decoder), conn)
+        applyAwarenessUpdate(doc.awareness, readVarUint8Array(decoder), conn)
         break
       }
     }
@@ -248,7 +252,7 @@ const closeConn = (doc, conn) => {
     // @ts-ignore
     const controlledIds = doc.conns.get(conn)
     doc.conns.delete(conn)
-    awarenessProtocol.removeAwarenessStates(doc.awareness, Array.from(controlledIds), null)
+    removeAwarenessStates(doc.awareness, Array.from(controlledIds), null)
     if (doc.conns.size === 0 && persistence !== null) {
       // if persisted, we store state and destroy ydocument
       persistence.writeState(doc.name, doc).then(() => {
@@ -289,7 +293,7 @@ const pingTimeout = 30000
  * @param {any} req
  * @param {any} opts
  */
-exports.setupWSConnection = (conn, req, { docName = req.url.slice(1).split('?')[0], gc = true } = {}) => {
+export function setupWSConnection(conn, req, { docName = req.url.slice(1).split('?')[0], gc = true } = {}) {
   conn.binaryType = 'arraybuffer'
   // get doc, initialize if it does not exist yet
   const doc = getYDoc(docName, gc)
@@ -326,16 +330,16 @@ exports.setupWSConnection = (conn, req, { docName = req.url.slice(1).split('?')[
   // scope
   {
     // send sync step 1
-    const encoder = encoding.createEncoder()
-    encoding.writeVarUint(encoder, messageSync)
-    syncProtocol.writeSyncStep1(encoder, doc)
-    send(doc, conn, encoding.toUint8Array(encoder))
+    const encoder = createEncoder()
+    writeVarUint(encoder, messageSync)
+    writeSyncStep1(encoder, doc)
+    send(doc, conn, toUint8Array(encoder))
     const awarenessStates = doc.awareness.getStates()
     if (awarenessStates.size > 0) {
-      const encoder = encoding.createEncoder()
-      encoding.writeVarUint(encoder, messageAwareness)
-      encoding.writeVarUint8Array(encoder, awarenessProtocol.encodeAwarenessUpdate(doc.awareness, Array.from(awarenessStates.keys())))
-      send(doc, conn, encoding.toUint8Array(encoder))
+      const encoder = createEncoder()
+      writeVarUint(encoder, messageAwareness)
+      writeVarUint8Array(encoder, encodeAwarenessUpdate(doc.awareness, Array.from(awarenessStates.keys())))
+      send(doc, conn, toUint8Array(encoder))
     }
   }
 }

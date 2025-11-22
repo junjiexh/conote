@@ -1,7 +1,4 @@
-const events = require('./events');
-const utils = require('./utils');
+import events from './events.js';
 
-module.exports = {
-  ...utils,
-  events,
-};
+export { serverId, setPersistence, getPersistence, docs, REMOTE_ORIGIN, getYDoc, setupWSConnection } from './utils.js';
+export { events };
