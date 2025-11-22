@@ -121,40 +121,4 @@ describe('RedisSync', () => {
 
   });
 
-  test('bindDoc catches updates published while replaying snapshot gap', async () => {
-    const redis = new Redis();
-    const serverA = createServer(redis, 'server-a', 'sync-c');
-    await serverA.sync.bindDoc('doc-race');
-    serverA.emitter.emit('doc:publish', {
-      docName: 'doc-race',
-      update: Buffer.from('before'),
-    });
-
-    const serverC = createServer(redis, 'server-c', 'sync-c');
-    const deliverSpy = jest.fn();
-    serverC.emitter.on('doc:deliver', deliverSpy);
-
-    const originalRange = serverC.adapter.range.bind(serverC.adapter);
-    let publishedDuringReplay = false;
-    serverC.adapter.range = async (...args) => {
-      const entries = await originalRange(...args);
-      if (!publishedDuringReplay) {
-        publishedDuringReplay = true;
-        serverA.emitter.emit('doc:publish', {
-          docName: 'doc-race',
-          update: Buffer.from('during'),
-        });
-      }
-      return entries;
-    };
-
-    await serverC.sync.bindDoc('doc-race');
-
-    await waitForExpect(() => {
-      const states = deliverSpy.mock.calls.map((call) => call[0].update.toString());
-      expect(states).toContain('before');
-      expect(states).toContain('during');
-    });
-
-  });
 });

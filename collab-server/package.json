@@ -27,6 +27,7 @@
     "@babel/preset-env": "^7.28.5",
     "ioredis-mock": "^8.13.1",
     "jest": "^30.2.0",
+    "testcontainers": "^11.8.1",
     "why-is-node-running": "^3.2.2"
   }
 }
