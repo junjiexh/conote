@@ -1,8 +1,13 @@
 import { createServer } from 'http';
 import { resolve as _resolve, dirname } from 'path';
 import { WebSocketServer } from 'ws';
+import Redis from 'ioredis';
 import * as yws from './lib/yws';
-const { setupWSConnection, setPersistence } = yws;
+import RedisStreamAdapterModule from './lib/redisStream';
+import RedisSyncModule from './lib/redisSync';
+const { setupWSConnection, setPersistence, events: yEvents, serverId: yServerId } = yws;
+const RedisStreamAdapter = RedisStreamAdapterModule?.default || RedisStreamAdapterModule;
+const RedisSync = RedisSyncModule?.default || RedisSyncModule;
 import { encodeStateAsUpdate, applyUpdate } from 'yjs';
 import { loadPackageDefinition, credentials } from '@grpc/grpc-js';
 import { loadSync } from '@grpc/proto-loader';
@@ -20,6 +25,7 @@ const GRPC_ADDRESS = process.env.COLLAB_GRPC_ADDRESS || 'localhost:9090';
 const SNAPSHOT_FLUSH_INTERVAL = parseInt(process.env.SNAPSHOT_FLUSH_INTERVAL || '2000', 10);
 const PROTO_PATH = process.env.COLLAB_PROTO_PATH
   || _resolve(__dirname, 'proto/collab/collab.proto');
+const REDIS_URL = process.env.COLLAB_REDIS_URL || '';
 
 const packageDefinition = loadSync(PROTO_PATH, {
   includeDirs: [dirname(PROTO_PATH), getProtoPath('..')],
@@ -38,6 +44,75 @@ const snapshotClient = new collabProto.CollaborationSnapshotService(
 );
 
 const persistState = new Map();
+
+let redisClient = null;
+let redisSync = null;
+let localDeliverCleanup = null;
+
+const initRedisSync = () => {
+  if (!REDIS_URL) {
+    console.warn('[collab] COLLAB_REDIS_URL not set; running without cross-instance sync.');
+    const handler = (payload) => {
+      if (!payload?.docName || !payload?.update) {
+        return;
+      }
+      yEvents.emit('doc:deliver', {
+        docName: payload.docName,
+        update: payload.update,
+      });
+    };
+    yEvents.on('doc:publish', handler);
+    localDeliverCleanup = () => yEvents.off('doc:publish', handler);
+    redisSync = {
+      bindDoc: async () => {},
+      shutdown: () => localDeliverCleanup?.(),
+    };
+    return;
+  }
+
+  redisClient = new Redis(REDIS_URL);
+  redisClient.on('error', (err) => {
+    console.error('[collab] redis error', err);
+  });
+
+  const adapter = new RedisStreamAdapter({
+    redis: redisClient,
+    serverId: yServerId,
+  });
+  redisSync = new RedisSync({
+    adapter,
+    eventsEmitter: yEvents,
+    serverId: yServerId,
+  });
+};
+
+initRedisSync();
+
+const ensureDocHydrated = async (docName) => {
+  if (!docName || !redisSync?.bindDoc) {
+    return;
+  }
+  try {
+    await redisSync.bindDoc(docName);
+  } catch (err) {
+    console.error(`[collab] redis sync bind failed ${docName}`, err);
+  }
+};
+
+const shutdownSync = () => {
+  if (redisSync?.shutdown) {
+    redisSync.shutdown();
+  }
+  if (redisClient) {
+    redisClient.quit().catch((err) => {
+      console.error('[collab] redis quit failed', err);
+    });
+    redisClient = null;
+  }
+};
+
+process.on('SIGINT', shutdownSync);
+process.on('SIGTERM', shutdownSync);
 
 const encodeDocumentState = (ydoc) => {
   const update = encodeStateAsUpdate(ydoc);
@@ -170,6 +245,7 @@ const server = createServer((req, res) => {
   res.writeHead(200);
   res.end('Conote collaboration server');
 });
+server.on('close', shutdownSync);
 
 const wss = new WebSocketServer({ noServer: true });
 
@@ -204,6 +280,7 @@ server.on('upgrade', async (request, socket, head) => {
       socket.destroy();
       return;
     }
+    await ensureDocHydrated(documentId);
     await authenticateRequest(documentId, token);
     wss.handleUpgrade(request, socket, head, (ws) => {
       const cleanup = () => {
@@ -222,4 +299,9 @@ server.listen(DEFAULT_PORT, HOST, () => {
   console.log(`Collaboration server listening on ${HOST}:${DEFAULT_PORT}`);
   console.log(`Forwarding access checks to ${BACKEND_API_URL}`);
   console.log(`Using collaboration snapshot service at ${GRPC_ADDRESS}`);
+  if (REDIS_URL) {
+    console.log(`[collab] Redis stream sync enabled (${REDIS_URL})`);
+  } else {
+    console.log('[collab] Redis sync disabled; running single-instance mode');
+  }
 });
