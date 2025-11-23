@@ -41,8 +41,10 @@ class RedisSync extends EventEmitter {
   async handlePublish(payload) {
     const { docName, update } = payload || {};
     if (!docName || !update) {
+      console.warn('[RedisSync] handlePublish: missing docName or update');
       return;
     }
+    console.log(`[RedisSync] handlePublish: doc=${docName} size=${update.length}`);
     try {
       const id = await this.adapter.appendUpdate({
         docName,
@@ -55,11 +57,7 @@ class RedisSync extends EventEmitter {
       }
     } catch (err) {
       this.emit('error', err);
-    } finally {
-      this.events.emit('doc:deliver', {
-        docName,
-        update: toUint8Array(update),
-      });
+      console.error(`[RedisSync] handlePublish error doc=${docName}`, err);
     }
   }
 
@@ -76,8 +74,11 @@ class RedisSync extends EventEmitter {
     }
     let state = this.docStates.get(docName);
     if (!state) {
+      console.log(`[RedisSync] bindDoc: new state for ${docName}`);
       state = { lastId: '0-0', stop: null };
       this.docStates.set(docName, state);
+    } else {
+      console.log(`[RedisSync] bindDoc: existing state for ${docName} lastId=${state.lastId}`);
     }
     await this.replayDoc(docName, state);
     if (!state.stop) {
@@ -102,6 +103,7 @@ class RedisSync extends EventEmitter {
       const entries = await this.adapter.range(docName, {
         afterId: state.lastId || '0-0',
       });
+      console.log(`[RedisSync] replayDoc: doc=${docName} found=${entries.length} after=${state.lastId}`);
       entries.forEach((entry) => {
         state.lastId = entry.id;
         this.emitDeliver(docName, entry);
@@ -126,9 +128,11 @@ class RedisSync extends EventEmitter {
       update: toUint8Array(entry.payload),
       serverId: entry.serverId,
     });
+    console.log(`[RedisSync] emitDeliver: doc=${docName} from=${entry.serverId} id=${entry.id}`);
   }
 
   shutdown() {
+    console.log('[RedisSync] shutdown');
     this.events.off('doc:publish', this.handlePublish);
     this.docStates.forEach((state) => {
       if (state.stop) {

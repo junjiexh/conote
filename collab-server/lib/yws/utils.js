@@ -1,11 +1,11 @@
 import { hostname } from 'os'
 import { encodeStateAsUpdate, applyUpdate, Doc } from 'yjs'
-import { writeUpdate, readSyncMessage, writeSyncStep1 } from 'y-protocols/dist/sync.cjs'
-import { Awareness, encodeAwarenessUpdate, applyAwarenessUpdate, removeAwarenessStates } from 'y-protocols/dist/awareness.cjs'
+import { writeUpdate, readSyncMessage, writeSyncStep1 } from 'y-protocols/sync'
+import { Awareness, encodeAwarenessUpdate, applyAwarenessUpdate, removeAwarenessStates } from 'y-protocols/awareness'
 
-import { createEncoder, writeVarUint, toUint8Array, writeVarUint8Array, length } from 'lib0/dist/encoding.cjs'
-import { createDecoder, readVarUint, readVarUint8Array } from 'lib0/dist/decoding.cjs'
-import { setIfUndefined } from 'lib0/dist/map.cjs'
+import { createEncoder, writeVarUint, toUint8Array, writeVarUint8Array, length } from 'lib0/encoding'
+import { createDecoder, readVarUint, readVarUint8Array } from 'lib0/decoding'
+import { setIfUndefined } from 'lib0/map'
 
 import debounce from 'lodash.debounce'
 
@@ -100,10 +100,12 @@ const broadcastEncodedMessage = (doc, message) => {
  */
 const updateHandler = (update, origin, doc) => {
   const message = encodeSyncUpdateMessage(update)
+  broadcastEncodedMessage(doc, message) // broadcast anyway
   if (origin === REMOTE_ORIGIN) { // remote delivery, skip publish doc:publish to avoid rebroadcast
-    broadcastEncodedMessage(doc, message)
+    console.log(`[yws] updateHandler: remote delivery, skip publish doc:publish to avoid rebroadcast doc=${doc.name}`)
     return
   }
+  console.log(`[yws] updateHandler: publish doc:publish doc=${doc.name}`)
   bus.emit('doc:publish', {
     docName: doc.name,
     update,
@@ -184,22 +186,32 @@ const _getYDoc = getYDoc
 export { _getYDoc as getYDoc }
 
 /**
+ * Handler for doc:deliver event, we do actual broardcast here.
+ * It is possible that the update is send to the origin client, but that is okay, yjs handle this.
+ * 
  * @param {{ docName: string, update: Uint8Array, serverId?: string }} payload
  */
 const handleDeliverEvent = payload => {
   const { docName, update, serverId: sourceId } = payload || {}
+  console.log('[yws] handleDeliverEvent', {
+    docName,
+    updateSize: update?.length,
+    sourceId,
+    localServerId: serverId
+  })
+
   if (!docName || !update) {
-    return
-  }
-  if (sourceId && sourceId === serverId) {
+    console.warn('[yws] handleDeliverEvent missing docName or update')
     return
   }
   const doc = docs.get(docName)
   if (!doc) {
+    console.log('[yws] handleDeliverEvent ignored: doc not found in memory', docName)
     return
   }
   try {
     applyUpdate(doc, update, REMOTE_ORIGIN)
+    console.log('[yws] handleDeliverEvent applied update', docName)
   } catch (err) {
     console.error(`Failed to apply remote update for ${docName}`, err)
   }
@@ -220,11 +232,12 @@ const messageListener = (conn, doc, message) => {
     switch (messageType) {
       case messageSync:
         writeVarUint(encoder, messageSync)
+        // It handles two main types of sync
+        // 1. sync step1: request state vector to calculate missing updates
+        // 2. sync step2: send update to server, so server will trigger the update event
         readSyncMessage(decoder, encoder, doc, conn)
 
-        // If the `encoder` only contains the type of reply message and no
-        // message, there is no need to send the message. When `encoder` only
-        // contains the type of reply, its length is 1.
+        // only step1 contains reply message
         if (length(encoder) > 1) {
           send(doc, conn, toUint8Array(encoder))
         }
