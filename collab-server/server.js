@@ -288,6 +288,8 @@ const healthResponse = JSON.stringify({ status: 'ok' });
 
 // HTTP server for health checks and WebSocket upgrades
 const server = createServer((req, res) => {
+  console.log(`[collab] Incoming Upgrade Request URL: ${request.url}`);
+
   if (req.url === '/health') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(healthResponse);

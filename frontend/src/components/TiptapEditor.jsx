@@ -23,7 +23,7 @@ import "./TiptapEditor.css";
 
 const EMPTY_DOCUMENT = "<p></p>";
 const COLLAB_SERVER_URL =
-  import.meta.env.VITE_COLLAB_URL || "ws://localhost:1234";
+  import.meta.env.VITE_COLLAB_URL || "ws://localhost:8000/collab";
 
 const ToolbarButton = ({ onClick, active, icon: Icon, title, disabled, children }) => (
   <button

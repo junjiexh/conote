@@ -25,6 +25,7 @@ services:
     image: kong:3.9.1
     container_name: conote-kong
     environment:
+      # KONG_LOG_LEVEL: debug
       KONG_DATABASE: "off"
       KONG_DECLARATIVE_CONFIG: /etc/kong/kong.yml
       KONG_PROXY_ACCESS_LOG: /dev/stdout
@@ -39,6 +40,8 @@ services:
     depends_on:
       backend:
         condition: service_healthy
+      collab-server:
+        condition: service_started
     healthcheck:
       test: ["CMD", "kong", "health"]
       interval: 10s
@@ -86,19 +89,6 @@ services:
       start_period: 60s
     networks:
       - conote-network
-
-  kibana:
-    image: docker.elastic.co/kibana/kibana:8.11.0 # Use the same version as ES
-    container_name: conote-kibana
-    ports:
-      - "5601:5601" # This exposes the Kibana UI on port 5601
-    environment:
-      # This points Kibana to your Elasticsearch service
-      - ELASTICSEARCH_HOSTS=http://conote-elasticsearch:9200
-    networks:
-      - conote-network
-    depends_on:
-      - elasticsearch
 
   # Account Service (Go gRPC + HTTP)
   account-service:
@@ -194,8 +184,6 @@ services:
     depends_on:
       backend:
         condition: service_healthy
-    ports:
-      - "1234:1234"
     networks:
       - conote-network
 
@@ -208,7 +196,7 @@ services:
       dockerfile: Dockerfile
       args:
         VITE_API_URL: ${VITE_API_URL:-http://localhost:8000/api}
-        VITE_COLLAB_URL: ${VITE_COLLAB_URL:-ws://collab-server:1234}
+        VITE_COLLAB_URL: ${VITE_COLLAB_URL:-ws://localhost:8000/collab}
     container_name: conote-frontend
     ports:
       - "3000:80"

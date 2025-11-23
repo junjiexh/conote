@@ -19,7 +19,7 @@ No incremental update log is stored—PostgreSQL only keeps the latest snapshot 
 
 | Variable | Service | Default | Description |
 | --- | --- | --- | --- |
-| `VITE_COLLAB_URL` | frontend build | `ws://localhost:1234` | WebSocket endpoint injected into the React app |
+| `VITE_COLLAB_URL` | frontend build | `ws://localhost:8000/collab` | WebSocket endpoint injected into the React app (proxied by Kong) |
 | `COLLAB_SERVER_PORT` | collab-server | `1234` | WebSocket listener port |
 | `COLLAB_GRPC_ADDRESS` | collab-server | `backend:9090` | Address of the backend gRPC snapshot service |
 | `SNAPSHOT_FLUSH_INTERVAL` | collab-server | `2000` | (Optional) milliseconds between snapshot flushes |
@@ -28,8 +28,8 @@ No incremental update log is stored—PostgreSQL only keeps the latest snapshot 
 To run the stack locally:
 
 ```bash
-docker compose up postgres backend collab-server frontend
-# WebSockets => collab-server:1234, REST => Kong/backend, snapshots => backend:9090 (gRPC)
+docker compose up postgres backend collab-server kong frontend
+# WebSockets => Kong:8000/collab -> collab-server, REST => Kong/backend, snapshots => backend:9090 (gRPC)
 ```
 
 ## Extending

@@ -63,3 +63,16 @@ services:
             - X-Auth-Token
           credentials: true
           max_age: 3600
+
+  # Collaboration Server - Proxies WebSocket traffic
+  - name: collab-server
+    url: http://collab-server:1234
+    routes:
+      - name: collab-ws-route
+        paths:
+          - /collab
+        strip_path: true
+        preserve_host: false
+        protocols:
+          - http
+          - https
