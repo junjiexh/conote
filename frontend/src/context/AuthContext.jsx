@@ -40,6 +40,7 @@ export const AuthProvider = ({ children }) => {
       const decoded = decodeToken(token);
       if (decoded) {
         setUser({
+          id: decoded.userId || decoded.user_id || decoded.sub,
           email: decoded.sub,
           username: decoded.sub?.split('@')[0] || 'User',
         });

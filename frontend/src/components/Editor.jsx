@@ -1,14 +1,52 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { FileText, Star, Share2, MoreHorizontal, Plus, CheckSquare } from 'lucide-react';
 import TiptapEditor from './TiptapEditor';
 import ShareDialog from './ShareDialog';
-import { MOCK_USERS } from '@/lib/mockData';
+import { useAuth } from '@/context/AuthContext';
+
+const colorFromIdentifier = (identifier) => {
+  if (!identifier) return '#475569';
+  const hash = Math.abs(
+    String(identifier)
+      .split('')
+      .reduce((acc, char) => acc + char.charCodeAt(0), 0),
+  );
+  return `#${hash.toString(16).padStart(6, '0').slice(0, 6)}`;
+};
+
+const getInitials = (name, email) => {
+  const source = name?.trim() || email?.trim();
+  if (!source) {
+    return '??';
+  }
+  const parts = source.split(/\s+/);
+  if (parts.length === 1) {
+    return parts[0].slice(0, 2).toUpperCase();
+  }
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+};
+
+const formatRole = (collaborator) => {
+  if (collaborator?.isOwner) {
+    return 'Owner';
+  }
+  if (collaborator?.permissionLevel) {
+    const lower = collaborator.permissionLevel.toLowerCase();
+    return lower.charAt(0).toUpperCase() + lower.slice(1);
+  }
+  return 'Viewer';
+};
 
 const Editor = ({ document, onSave }) => {
   const [title, setTitle] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [isStarred, setIsStarred] = useState(false);
   const [showShareDialog, setShowShareDialog] = useState(false);
+  const [onlineUsers, setOnlineUsers] = useState([]);
+  const { user } = useAuth();
+  const handlePresenceChange = useCallback((states = []) => {
+    setOnlineUsers(Array.isArray(states) ? states : []);
+  }, []);
 
   useEffect(() => {
     if (document) {
@@ -46,8 +84,41 @@ const Editor = ({ document, onSave }) => {
     }
   }, [title, document, hasTitleChanges, onSave]);
 
-  // Mock collaborators
-  const collaborators = document ? (document.id % 3 === 0 ? [1, 2] : document.id % 2 === 0 ? [3] : []) : [];
+  useEffect(() => {
+    if (!document) {
+      setOnlineUsers([]);
+    }
+  }, [document]);
+
+  const normalizedCurrentUserEmail = user?.email?.toLowerCase();
+  const onlineCollaborators = onlineUsers
+    .filter((presence) => {
+      if (!presence) return false;
+      if (!presence.email || !normalizedCurrentUserEmail) {
+        return true;
+      }
+      return presence.email.toLowerCase() !== normalizedCurrentUserEmail;
+    })
+    .map((presence, index) => {
+      const identifier = presence.clientId
+        || presence.id
+        || presence.email
+        || presence.name
+        || `presence-${index}`;
+      const label = presence.name || presence.email || "Unknown user";
+      const email = presence.email || "";
+      const avatarColor = presence.color || colorFromIdentifier(email || label || identifier);
+      const initials = getInitials(label, email);
+      return {
+        key: identifier,
+        name: label,
+        email,
+        avatarColor,
+        initials,
+        permissionLevel: "",
+        isOwner: false,
+      };
+    });
 
   if (!document) {
     return (
@@ -87,37 +158,35 @@ const Editor = ({ document, onSave }) => {
 
         <div className="flex items-center gap-3">
           {/* Active Collaborators */}
-          <div className="flex -space-x-2 mr-4">
-            {collaborators.length > 0 ? (
+          <div className="flex items-center gap-2 mr-4">
+            {onlineCollaborators.length > 0 ? (
               <>
-                {collaborators.map((uid) => {
-                  const user = MOCK_USERS.find((u) => u.id === uid);
-                  return (
-                    <div key={uid} className="relative group">
+                <div className="flex -space-x-2">
+                  {onlineCollaborators.map((collaborator) => (
+                    <div key={collaborator.key} className="relative group">
                       <div
-                        className={`w-8 h-8 rounded-full ${user.color} text-xs text-white flex items-center justify-center ring-2 ring-white cursor-pointer`}
+                        className="w-8 h-8 rounded-full text-xs text-white flex items-center justify-center ring-2 ring-white cursor-pointer"
+                        style={{ backgroundColor: collaborator.avatarColor }}
                       >
-                        {user.initials}
+                        {collaborator.initials}
                       </div>
-                      {/* Tooltip */}
                       <div className="absolute top-full mt-1 right-0 bg-slate-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10 pointer-events-none">
-                        {user.name} is viewing
+                        {collaborator.name} • {formatRole(collaborator)}
                       </div>
                     </div>
-                  );
-                })}
-                <button className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center ring-2 ring-white hover:bg-primary/10 hover:text-primary transition-colors">
-                  <Plus size={14} />
-                </button>
+                  ))}
+                </div>
+                <span className="text-xs text-slate-400">{onlineCollaborators.length} online</span>
               </>
             ) : (
-              <div className='flex items-center'>
-                <span className="text-xs text-slate-400 mr-2">No one else here</span>
-                <button className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center ring-2 ring-white hover:bg-primary/10 hover:text-primary transition-colors">
-                  <Plus size={14} />
-                </button>
-              </div>
+              <span className="text-xs text-slate-400">Only you here</span>
             )}
+            <button
+              onClick={() => setShowShareDialog(true)}
+              className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center ring-2 ring-white hover:bg-primary/10 hover:text-primary transition-colors"
+            >
+              <Plus size={14} />
+            </button>
           </div>
 
           <div className="h-6 w-px bg-slate-200 mx-1"></div>
@@ -156,6 +225,7 @@ const Editor = ({ document, onSave }) => {
             className="w-full min-h-[500px]"
             placeholder="Start writing, or drag files here..."
             documentId={document.id}
+            onPresenceChange={handlePresenceChange}
           />
         </div>
       </div>

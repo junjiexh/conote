@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
@@ -24,6 +24,15 @@ import "./TiptapEditor.css";
 const EMPTY_DOCUMENT = "<p></p>";
 const COLLAB_SERVER_URL =
   import.meta.env.VITE_COLLAB_URL || "ws://localhost:8000/collab";
+const DEFAULT_USER_COLOR = "#4f46e5";
+
+const colorFromIdentifier = (identifier) => {
+  if (!identifier) return DEFAULT_USER_COLOR;
+  const hash = Math.abs(
+    identifier.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0),
+  );
+  return `#${hash.toString(16).padStart(6, "0").slice(0, 6)}`;
+};
 
 const ToolbarButton = ({ onClick, active, icon: Icon, title, disabled, children }) => (
   <button
@@ -45,6 +54,7 @@ const TiptapEditor =
     className,
     placeholder,
     documentId,
+    onPresenceChange,
   }) => {
     const [collabStatus, setCollabStatus] = useState("disconnected");
     const { user, token } = useAuth();
@@ -52,11 +62,16 @@ const TiptapEditor =
     const [provider, setProvider] = useState(null);
 
     const canUseCollaboration = Boolean(COLLAB_SERVER_URL && documentId && token);
+    const userEmail = user?.email || "";
+    const displayName = user?.username || user?.email || "Anonymous";
+    const userId = user?.id || userEmail || "current-user";
+    const userColor = userEmail ? colorFromIdentifier(userEmail) : DEFAULT_USER_COLOR;
 
     // create a fresh doc and provider on mount, and clean up on unmount
     useEffect(() => {
       if (!canUseCollaboration) {
-        return
+        onPresenceChange?.([]);
+        return undefined;
       }
       const doc = new Y.Doc();
       const wsProvider = new WebsocketProvider(
@@ -82,15 +97,41 @@ const TiptapEditor =
         setCollabStatus(status);
       };
 
+      const awareness = wsProvider.awareness;
+      const emitPresence = () => {
+        const states = Array.from(awareness.getStates().entries())
+          .map(([clientId, state]) => ({
+            clientId,
+            ...(state?.user || {}),
+          }))
+          .filter((presence) => presence.name || presence.email);
+        onPresenceChange?.(states);
+      };
+
+      awareness.setLocalState({
+        user: {
+          id: userId,
+          name: displayName,
+          email: userEmail,
+          color: userColor,
+        },
+      });
+
+      awareness.on("update", emitPresence);
+      emitPresence();
+
       wsProvider.on("status", handleStatus);
       return () => {
+        awareness.off("update", emitPresence);
+        awareness.setLocalState(null);
         wsProvider.off("status", handleStatus);
         wsProvider.destroy();
         doc.destroy();
         setProvider(null);
         setYdoc(null);
+        onPresenceChange?.([]);
       };
-    }, [documentId, canUseCollaboration, token]);
+    }, [documentId, canUseCollaboration, token, userEmail, displayName, userId, userColor, onPresenceChange]);
 
     const collabReady =
       !canUseCollaboration || (ydoc !== null && provider !== null);
@@ -135,6 +176,8 @@ const TiptapEditorInner = ({
   collabStatus,
 }) => {
   const [isEmpty, setIsEmpty] = useState(true);
+  const displayName = user?.username || user?.email || "Anonymous";
+  const caretColor = user?.email ? colorFromIdentifier(user.email) : DEFAULT_USER_COLOR;
 
   // Swaps the built-in document store for a Yjs document
   // and configures the caret extension for remote cursors
@@ -148,17 +191,8 @@ const TiptapEditorInner = ({
         CollaborationCaret.configure({
           provider,
           user: {
-            name: user?.username || user?.email || "Anonymous",
-            color: user?.email
-              ? `#${Math.abs(
-                user.email
-                  .split("")
-                  .reduce((acc, c) => acc + c.charCodeAt(0), 0),
-              )
-                .toString(16)
-                .padStart(6, "0")
-                .slice(0, 6)}`
-              : "#4f46e5",
+            name: displayName,
+            color: caretColor,
           },
         }),
       ]
