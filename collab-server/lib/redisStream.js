@@ -1,4 +1,4 @@
-const { EventEmitter } = require('events');
+import { EventEmitter } from 'events';
 
 const DEFAULT_NAMESPACE = process.env.COLLAB_REDIS_NAMESPACE || 'conote:collab';
 const DEFAULT_MAX_LEN = parseInt(process.env.COLLAB_REDIS_STREAM_MAXLEN || '5000', 10);
@@ -158,4 +158,4 @@ class RedisStreamAdapter extends EventEmitter {
   }
 }
 
-module.exports = RedisStreamAdapter;
+export default RedisStreamAdapter;

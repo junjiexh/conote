@@ -1,17 +1,16 @@
 import { createServer } from 'http';
-import { resolve as _resolve, dirname } from 'path';
+import { resolve as _resolve, dirname as pathDirname } from 'path';
 import { WebSocketServer } from 'ws';
 import Redis from 'ioredis';
-import * as yws from './lib/yws';
-import RedisStreamAdapterModule from './lib/redisStream';
-import RedisSyncModule from './lib/redisSync';
+import * as yws from './lib/yws/index.js';
+import RedisStreamAdapter from './lib/redisStream.js';
+import RedisSync from './lib/redisSync.js';
 const { setupWSConnection, setPersistence, events: yEvents, serverId: yServerId } = yws;
-const RedisStreamAdapter = RedisStreamAdapterModule?.default || RedisStreamAdapterModule;
-const RedisSync = RedisSyncModule?.default || RedisSyncModule;
 import { encodeStateAsUpdate, applyUpdate } from 'yjs';
 import { loadPackageDefinition, credentials } from '@grpc/grpc-js';
 import { loadSync } from '@grpc/proto-loader';
 import { getProtoPath } from 'google-proto-files';
+import { fileURLToPath } from 'url';
 
 /**
  * @typedef {import('./proto/collab').ProtoGrpcType} ProtoGrpcType
@@ -23,12 +22,14 @@ const HOST = process.env.HOST || '0.0.0.0';
 const BACKEND_API_URL = process.env.BACKEND_API_URL || 'http://localhost:8000/api';
 const GRPC_ADDRESS = process.env.COLLAB_GRPC_ADDRESS || 'localhost:9090';
 const SNAPSHOT_FLUSH_INTERVAL = parseInt(process.env.SNAPSHOT_FLUSH_INTERVAL || '2000', 10);
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = pathDirname(__filename);
 const PROTO_PATH = process.env.COLLAB_PROTO_PATH
   || _resolve(__dirname, 'proto/collab/collab.proto');
 const REDIS_URL = process.env.COLLAB_REDIS_URL || '';
 
 const packageDefinition = loadSync(PROTO_PATH, {
-  includeDirs: [dirname(PROTO_PATH), getProtoPath('..')],
+  includeDirs: [pathDirname(PROTO_PATH), getProtoPath('..')],
   longs: String,
   enums: String,
   defaults: true,

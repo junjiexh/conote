@@ -1,6 +1,5 @@
-const { EventEmitter } = require('events');
-
-const RedisStreamAdapter = require('./redisStream');
+import { EventEmitter } from 'events';
+import RedisStreamAdapter from './redisStream.js';
 
 const toUint8Array = (input) => {
   if (!input) {
@@ -152,4 +151,4 @@ RedisSync.create = ({ redis, eventsEmitter, serverId, namespace }) => {
   return new RedisSync({ adapter, eventsEmitter, serverId });
 };
 
-module.exports = RedisSync;
+export default RedisSync;

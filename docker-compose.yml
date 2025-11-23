@@ -190,6 +190,7 @@ services:
       BACKEND_API_URL: http://backend:8080/api
       COLLAB_SERVER_PORT: 1234
       COLLAB_GRPC_ADDRESS: backend:9090
+      COLLAB_REDIS_URL: redis://redis:6379
     depends_on:
       backend:
         condition: service_healthy
