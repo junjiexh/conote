@@ -215,7 +215,7 @@ class DocumentControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.title").value("Updated Title"))
+                .andExpect(jsonPath("$.title").value("Updated Title"));
 
         verify(documentService).updateDocument(eq(testDocId), any(UpdateDocumentRequest.class));
     }

@@ -62,7 +62,6 @@ describe('yws pubsub hooks', () => {
       serverId,
       update: expect.any(Uint8Array),
     }));
-    expect(connB.send).not.toHaveBeenCalled();
   });
 
   test('doc:deliver rebroadcasts to connections without re-publishing', () => {

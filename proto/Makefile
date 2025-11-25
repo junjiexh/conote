@@ -10,7 +10,7 @@ docker-build: all
 # Build backend image with Jib (fast!)
 jib-backend: java
 	@echo "Building backend Docker image with Jib..."
-	@cd ../backend && mvn compile jib:dockerBuild -DskipTests -q
+	@cd ../backend && mvn clean compile jib:dockerBuild -DskipTests -q
 	@echo "Cleaning up dangling images..."
 	@docker image prune -f > /dev/null 2>&1 || true
 	@echo "✓ Backend image built: conote-backend:latest"

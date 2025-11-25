@@ -14,8 +14,7 @@ COPY src/main/proto ./src/main/proto
 COPY src ./src
 
 # Generate protobuf code and build (single Maven invocation)
-# Use 'package' instead of 'clean package' to avoid re-downloading dependencies
-RUN mvn package -DskipTests -B
+RUN mvn clean package -DskipTests -B
 
 # Runtime stage
 FROM eclipse-temurin:17-jre

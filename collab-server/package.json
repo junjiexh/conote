@@ -25,6 +25,7 @@
   },
   "devDependencies": {
     "@babel/preset-env": "^7.28.5",
+    "babel-plugin-transform-import-meta": "^2.3.3",
     "ioredis-mock": "^8.13.1",
     "jest": "^30.2.0",
     "testcontainers": "^11.8.1",

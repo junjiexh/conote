@@ -18,7 +18,7 @@ import { getProtoPath } from 'google-proto-files';
 import * as yws from './lib/yws/index.js';
 import RedisStreamAdapter from './lib/redisStream.js';
 import RedisSync from './lib/redisSync.js';
-import { saveSnapshot, getSnapshot, scheduleSave } from './lib/snapshot.js';
+import { getSnapshot, scheduleSave } from './lib/snapshot.js';
 import { authenticateRequest, extractConnectionParams } from './lib/auth.js';
 
 const { setupWSConnection, setPersistence, events: yEvents, serverId: yServerId } = yws;
@@ -41,7 +41,7 @@ const BACKEND_API_URL = process.env.BACKEND_API_URL || 'http://localhost:8000/ap
 // gRPC configuration
 const GRPC_ADDRESS = process.env.COLLAB_GRPC_ADDRESS || 'localhost:9090';
 
-// Snapshot persistence configuration
+// Snapshot persistence configuration (used as throttle before queue processing)
 const SNAPSHOT_FLUSH_INTERVAL = parseInt(process.env.SNAPSHOT_FLUSH_INTERVAL || '2000', 10);
 
 // Redis configuration for multi-instance sync
@@ -84,9 +84,6 @@ const snapshotClient = initializeGrpcClient();
 // ============================================================================
 // REDIS SYNC INITIALIZATION
 // ============================================================================
-// State for tracking pending snapshot saves
-const persistState = new Map();
-
 // Redis client and sync instances
 let redisClient = null;
 let redisSync = null;
@@ -153,6 +150,33 @@ const ensureDocHydrated = async (docName) => {
     await redisSync.bindDoc(docName);
   } catch (err) {
     console.error(`[collab] redis sync bind failed ${docName}`, err);
+  }
+};
+
+/**
+ * Enqueue a snapshot rebuild task for the given document.
+ * Falls back to a warning when Redis is not configured.
+ * @param {string} docName
+ * @param {string} [reason]
+ */
+const enqueueSnapshotForDoc = async (docName, reason = '') => {
+  if (!docName) {
+    return;
+  }
+  if (!redisClient) {
+    console.warn(`[collab] skip snapshot enqueue (redis not configured) doc=${docName}`);
+    return;
+  }
+  try {
+    const queued = await scheduleSave(docName, {
+      redis: redisClient,
+      delayMs: SNAPSHOT_FLUSH_INTERVAL,
+    });
+    if (queued) {
+      console.info(`[collab] snapshot task enqueued doc=${docName}${reason ? ` reason=${reason}` : ''}`);
+    }
+  } catch (err) {
+    console.error(`[collab] failed to enqueue snapshot doc=${docName}`, err);
   }
 };
 
@@ -232,28 +256,13 @@ setPersistence({
     }
 
     // Setup auto-save on document updates
-    ydoc.on('update', () => scheduleSave(
-      docName,
-      ydoc,
-      snapshotClient,
-      persistState,
-      SNAPSHOT_FLUSH_INTERVAL
-    ));
+    ydoc.on('update', () => {
+      enqueueSnapshotForDoc(docName, 'update');
+    });
 
     // Handle document destruction
     ydoc.on('destroy', () => {
-      const state = persistState.get(docName);
-      if (state?.timeout) {
-        clearTimeout(state.timeout);
-        state.timeout = null;
-      }
-      saveSnapshot(docName, ydoc, snapshotClient)
-        .catch((error) => {
-          console.error(`Failed to persist snapshot during destroy for ${docName}`, error);
-        })
-        .finally(() => {
-          persistState.delete(docName);
-        });
+      enqueueSnapshotForDoc(docName, 'destroy');
     });
   },
 
@@ -268,15 +277,9 @@ setPersistence({
       return;
     }
     try {
-      await saveSnapshot(docName, ydoc, snapshotClient);
+      await enqueueSnapshotForDoc(docName, 'writeState');
     } catch (error) {
-      console.error(`Failed to flush snapshot for ${docName}`, error);
-    } finally {
-      const state = persistState.get(docName);
-      if (state?.timeout) {
-        clearTimeout(state.timeout);
-      }
-      persistState.delete(docName);
+      console.error(`Failed to enqueue snapshot for ${docName}`, error);
     }
   },
 });
