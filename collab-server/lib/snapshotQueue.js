@@ -3,7 +3,9 @@ import { randomUUID } from 'crypto';
 const DEFAULT_NAMESPACE = process.env.COLLAB_REDIS_NAMESPACE || 'conote:collab';
 const DEFAULT_QUEUE_KEY = process.env.COLLAB_SNAPSHOT_QUEUE_KEY || `${DEFAULT_NAMESPACE}:snapshot:queue`;
 const DEFAULT_THROTTLE_MS = parseInt(process.env.SNAPSHOT_THROTTLE_MS || process.env.SNAPSHOT_FLUSH_INTERVAL || '2000', 10);
+// Push this task into future to aviod processing it concurrently
 const DEFAULT_PROCESSING_TTL_MS = parseInt(process.env.SNAPSHOT_PROCESSING_TTL_MS || '60000', 10);
+// Retry delay for failed tasks
 const DEFAULT_RETRY_DELAY_MS = parseInt(process.env.SNAPSHOT_RETRY_DELAY_MS || '5000', 10);
 
 const claimScript = `

@@ -111,10 +111,15 @@ describe('snapshot worker integration (redis stream + queue)', () => {
     snapshotStore.set(docId, baseSnapshot);
 
     // Append updates to the redis stream
-    const updateBuffer = createSnapshotBuffer((doc) => {
-      doc.getText('content').insert(0, 'hello');
-      doc.getText('content').insert(5, ' world');
+    // Build an incremental update (append " world") based on the base snapshot state.
+    const deltaDoc = new YDoc();
+    applyUpdate(deltaDoc, new Uint8Array(baseSnapshot));
+    let capturedUpdate = null;
+    deltaDoc.on('update', (update) => {
+      capturedUpdate = update;
     });
+    deltaDoc.getText('content').insert(5, ' world');
+    const updateBuffer = Buffer.from(capturedUpdate);
     await adapter.appendUpdate({
       docName: docId,
       update: updateBuffer,

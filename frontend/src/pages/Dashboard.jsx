@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { documentAPI } from '../services/api';
 import NoteSidebar from '../components/NoteSidebar';
@@ -16,12 +16,9 @@ import {
 } from '@/components/ui/dialog';
 import { Loader2 } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 const Dashboard = () => {
-  const [tree, setTree] = useState([]);
-  const [activeDocId, setActiveDocId] = useState(null);
-  const [activeDocument, setActiveDocument] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [newDocTitle, setNewDocTitle] = useState('');
   const [createParentId, setCreateParentId] = useState(null);
@@ -29,51 +26,33 @@ const Dashboard = () => {
   const { logout } = useAuth();
   const navigate = useNavigate();
   const { documentId: routeDocumentId } = useParams();
+  const queryClient = useQueryClient();
+
+  const { data: tree = [], isLoading: treeLoading } = useQuery({
+    queryKey: ['documents'],
+    queryFn: async () => {
+      const response = await documentAPI.getAll();
+      return response.data;
+    },
+  });
+
+  const { data: activeDocument, error: docError } = useQuery({
+    queryKey: ['document', routeDocumentId],
+    queryFn: async () => {
+      const response = await documentAPI.getById(routeDocumentId);
+      return response.data;
+    },
+    enabled: !!routeDocumentId,
+    retry: false,
+  });
 
   useEffect(() => {
-    loadDocumentTree();
-  }, []);
-
-  const loadDocumentTree = async () => {
-    try {
-      const response = await documentAPI.getAll();
-      setTree(response.data);
-    } catch (error) {
-      console.error('Error loading documents:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchDocument = useCallback(async (id) => {
-    if (!id) {
-      setActiveDocument(null);
-      setActiveDocId(null);
-      return;
-    }
-    try {
-      const response = await documentAPI.getById(id);
-      setActiveDocument(response.data);
-      setActiveDocId(id);
-    } catch (error) {
-      console.error('Error loading document:', error);
+    if (docError) {
+      console.error('Error loading document:', docError);
       alert('Failed to load document');
       navigate('/documents', { replace: true });
-      setActiveDocument(null);
-      setActiveDocId(null);
     }
-  }, [navigate]);
-
-  useEffect(() => {
-    if (routeDocumentId) {
-      if (routeDocumentId !== activeDocId) {
-        fetchDocument(routeDocumentId);
-      }
-    } else if (activeDocId) {
-      setActiveDocId(null);
-      setActiveDocument(null);
-    }
-  }, [routeDocumentId, fetchDocument, activeDocId]);
+  }, [docError, navigate]);
 
   const handleNavigateToDocument = (id) => {
     if (!id) {
@@ -94,7 +73,7 @@ const Dashboard = () => {
 
     try {
       const response = await documentAPI.create(newDocTitle, createParentId);
-      await loadDocumentTree();
+      queryClient.invalidateQueries({ queryKey: ['documents'] });
       handleNavigateToDocument(response.data.id);
       setShowCreateDialog(false);
       setNewDocTitle('');
@@ -115,10 +94,8 @@ const Dashboard = () => {
   const handleRename = async (id, newTitle) => {
     try {
       await documentAPI.update(id, { title: newTitle });
-      await loadDocumentTree();
-      if (activeDocId === id) {
-        setActiveDocument((prev) => ({ ...prev, title: newTitle }));
-      }
+      queryClient.invalidateQueries({ queryKey: ['documents'] });
+      queryClient.invalidateQueries({ queryKey: ['document', id] });
     } catch (error) {
       console.error('Error renaming document:', error);
       alert('Failed to rename document');
@@ -128,10 +105,8 @@ const Dashboard = () => {
   const handleDelete = async (id) => {
     try {
       await documentAPI.delete(id);
-      await loadDocumentTree();
-      if (activeDocId === id) {
-        setActiveDocId(null);
-        setActiveDocument(null);
+      queryClient.invalidateQueries({ queryKey: ['documents'] });
+      if (routeDocumentId === id) {
         handleNavigateToDocument(null);
       }
     } catch (error) {
@@ -143,10 +118,8 @@ const Dashboard = () => {
   const handleSaveDocument = async (id, title) => {
     try {
       await documentAPI.update(id, { title });
-      await loadDocumentTree();
-      if (activeDocId === id) {
-        setActiveDocument((prev) => ({...prev, title}))
-      }
+      queryClient.invalidateQueries({ queryKey: ['documents'] });
+      queryClient.invalidateQueries({ queryKey: ['document', id] });
     } catch (error) {
       console.error('Error saving document:', error);
       throw error;
@@ -160,7 +133,7 @@ const Dashboard = () => {
 
   return (
     <div className="h-screen flex bg-gray-50 text-slate-900 overflow-hidden">
-      {loading ? (
+      {treeLoading ? (
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center text-muted-foreground flex items-center gap-2">
             <Loader2 className="h-8 w-8 animate-spin" />
@@ -171,7 +144,7 @@ const Dashboard = () => {
         <>
           <NoteSidebar
             tree={tree}
-            activeDocId={activeDocId}
+            activeDocId={routeDocumentId}
             onSelect={handleNavigateToDocument}
             onCreateRoot={handleCreateRoot}
             onCreateChild={handleCreateChild}
@@ -183,7 +156,7 @@ const Dashboard = () => {
           />
 
           <main className="flex-1 min-w-0 bg-white relative">
-            <Editor document={activeDocument} onSave={handleSaveDocument} />
+            <Editor document={activeDocument || null} onSave={handleSaveDocument} />
           </main>
         </>
       )}

@@ -52,7 +52,7 @@ export const persistSnapshot = (documentId, ydoc, snapshotClient) => {
  * @param {number} [options.delayMs]
  * @returns {Promise<boolean>} true if a new task was enqueued, false if already pending
  */
-export const saveSnapshot = (documentId, {
+export const saveSnapshotTask = (documentId, {
     redis,
     queueKey = snapshotQueueDefaults.queueKey,
     delayMs = snapshotQueueDefaults.throttleMs,
@@ -104,4 +104,4 @@ export const scheduleSave = (documentId, {
     redis,
     queueKey = snapshotQueueDefaults.queueKey,
     delayMs = snapshotQueueDefaults.throttleMs,
-} = {}) => saveSnapshot(documentId, { redis, queueKey, delayMs });
+} = {}) => saveSnapshotTask(documentId, { redis, queueKey, delayMs });
