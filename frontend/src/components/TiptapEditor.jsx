@@ -238,7 +238,9 @@ const TiptapEditorInner = ({
     onUpdate: ({ editor }) => {
       setIsEmpty(editor.isEmpty);
       if (onChange) {
-        onChange(editor.getHTML());
+        setTimeout(() => {
+          onChange(editor.getHTML());
+        }, 0);
       }
     },
   });

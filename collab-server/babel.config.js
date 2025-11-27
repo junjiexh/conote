@@ -1,2 +1,8 @@
-// this file is just for jest to work, or it will throw 'SyntaxError: Cannot use import statement outside a module' error
-export default { presets: ['@babel/preset-env'] }
+export default {
+    presets: [
+        ['@babel/preset-env', { targets: { node: 'current' } }]
+    ],
+    plugins: [
+        'babel-plugin-transform-import-meta'
+    ]
+};

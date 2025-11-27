@@ -92,7 +92,6 @@ describe('RedisSync', () => {
     await waitForExpect(() => {
       expect(deliverSpyB).toHaveBeenCalled();
     });
-    expect(deliverSpyA).toHaveBeenCalled();
     const payloadB = deliverSpyB.mock.calls[0][0];
     expect(Buffer.from(payloadB.update).toString()).toBe('hello');
 

@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "start": "node server.js",
+    "loadtest:bundle": "esbuild loadtest/collab-ws.k6.js --bundle --platform=neutral --format=esm --target=es2020 --external:k6 --external:k6/ws --external:k6/metrics --outfile=loadtest/dist/collab-ws.bundle.js",
     "proto:gen": "proto-loader-gen-types --longs=String --enums=String --defaults --oneofs --grpcLib=@grpc/grpc-js --outDir=proto/ proto/collab/*.proto",
     "test": "jest"
   },
@@ -25,6 +26,8 @@
   },
   "devDependencies": {
     "@babel/preset-env": "^7.28.5",
+    "babel-plugin-transform-import-meta": "^2.3.3",
+    "esbuild": "^0.21.5",
     "ioredis-mock": "^8.13.1",
     "jest": "^30.2.0",
     "testcontainers": "^11.8.1",

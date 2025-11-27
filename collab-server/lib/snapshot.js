@@ -1,4 +1,5 @@
 import { encodeStateAsUpdate } from 'yjs';
+import { enqueueSnapshotTask, snapshotQueueDefaults } from './snapshotQueue.js';
 
 /**
  * Encode a Y.Doc's current state as an update buffer
@@ -11,34 +12,56 @@ export const encodeDocumentState = (ydoc) => {
 };
 
 /**
- * Save a document snapshot to the backend via gRPC
+ * Persist a document snapshot to the backend via gRPC.
+ * Intended for background worker usage.
  * @param {string} documentId - The document identifier
  * @param {import('yjs').Doc} ydoc - The Y.Doc to save
  * @param {Object} snapshotClient - gRPC snapshot service client
  * @returns {Promise<void>}
  */
-export const saveSnapshot = (documentId, ydoc, snapshotClient) => {
+export const persistSnapshot = (documentId, ydoc, snapshotClient) => {
     if (!documentId) {
-        console.warn('[collab] skip saveSnapshot: empty documentId');
+        console.warn('[collab] skip persistSnapshot: empty documentId');
         return Promise.resolve();
     }
     const payload = encodeDocumentState(ydoc);
-    console.info(`[collab] saveSnapshot -> id=${documentId} bytes=${payload.length}`);
+    console.info(`[collab] persistSnapshot -> id=${documentId} bytes=${payload.length}`);
     return new Promise((resolve, reject) => {
         snapshotClient.saveSnapshot(
             { documentId: documentId, snapshot: payload },
             (err) => {
                 if (err) {
-                    console.error(`[collab] saveSnapshot failed ${documentId}`, err);
+                    console.error(`[collab] persistSnapshot failed ${documentId}`, err);
                     reject(err);
                 } else {
-                    console.info(`[collab] saveSnapshot <- ok id=${documentId}`);
+                    console.info(`[collab] persistSnapshot <- ok id=${documentId}`);
                     resolve();
                 }
             },
         );
     });
 };
+
+/**
+ * Enqueue a snapshot rebuild task for a document.
+ * Actual persistence will be performed by a background worker.
+ * @param {string} documentId
+ * @param {Object} options
+ * @param {import('ioredis')} options.redis
+ * @param {string} [options.queueKey]
+ * @param {number} [options.delayMs]
+ * @returns {Promise<boolean>} true if a new task was enqueued, false if already pending
+ */
+export const saveSnapshotTask = (documentId, {
+    redis,
+    queueKey = snapshotQueueDefaults.queueKey,
+    delayMs = snapshotQueueDefaults.throttleMs,
+} = {}) => enqueueSnapshotTask({
+    redis,
+    docId: documentId,
+    queueKey,
+    delayMs,
+});
 
 /**
  * Get a document snapshot from the backend via gRPC
@@ -70,28 +93,15 @@ export const getSnapshot = (documentId, snapshotClient) => {
 
 /**
  * Schedule a debounced save for a document
+ * Queue a snapshot task for a document (debounce now handled by ZSET dedupe/throttle).
  * @param {string} documentId - The document identifier
- * @param {import('yjs').Doc} ydoc - The Y.Doc to save
- * @param {Object} snapshotClient - gRPC snapshot service client
- * @param {Map} persistState - Map to track pending saves
- * @param {number} flushInterval - Debounce interval in milliseconds
+ * @param {Object} options
+ * @param {import('ioredis')} options.redis
+ * @param {string} [options.queueKey]
+ * @param {number} [options.delayMs]
  */
-export const scheduleSave = (documentId, ydoc, snapshotClient, persistState, flushInterval) => {
-    let state = persistState.get(documentId);
-    if (!state) {
-        state = { timeout: null };
-        persistState.set(documentId, state);
-    }
-    if (state.timeout) {
-        return;
-    }
-    state.timeout = setTimeout(async () => {
-        try {
-            await saveSnapshot(documentId, ydoc, snapshotClient);
-        } catch (error) {
-            console.error(`Failed to persist snapshot for ${documentId}`, error);
-        } finally {
-            state.timeout = null;
-        }
-    }, flushInterval);
-};
+export const scheduleSave = (documentId, {
+    redis,
+    queueKey = snapshotQueueDefaults.queueKey,
+    delayMs = snapshotQueueDefaults.throttleMs,
+} = {}) => saveSnapshotTask(documentId, { redis, queueKey, delayMs });
