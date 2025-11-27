@@ -29,8 +29,9 @@ type DatabaseConfig struct {
 }
 
 type JWTConfig struct {
-	Secret     string
-	Expiration time.Duration
+	Secret            string
+	Expiration        time.Duration
+	RefreshExpiration time.Duration
 }
 
 type SecurityConfig struct {
@@ -53,6 +54,11 @@ func Load() (*Config, error) {
 	jwtExpiration, err := strconv.Atoi(getEnv("JWT_EXPIRATION_HOURS", "24"))
 	if err != nil {
 		return nil, fmt.Errorf("invalid JWT_EXPIRATION_HOURS: %w", err)
+	}
+
+	refreshExpirationDays, err := strconv.Atoi(getEnv("REFRESH_TOKEN_EXPIRATION_DAYS", "7"))
+	if err != nil {
+		return nil, fmt.Errorf("invalid REFRESH_TOKEN_EXPIRATION_DAYS: %w", err)
 	}
 
 	maxFailedAttempts, err := strconv.Atoi(getEnv("MAX_FAILED_ATTEMPTS", "5"))
@@ -84,8 +90,9 @@ func Load() (*Config, error) {
 			SSLMode:  getEnv("DB_SSLMODE", "disable"),
 		},
 		JWT: JWTConfig{
-			Secret:     getEnv("JWT_SECRET", "your-secret-key-change-in-production"),
-			Expiration: time.Duration(jwtExpiration) * time.Hour,
+			Secret:            getEnv("JWT_SECRET", "your-secret-key-change-in-production"),
+			Expiration:        time.Duration(jwtExpiration) * time.Hour,
+			RefreshExpiration: time.Duration(refreshExpirationDays) * 24 * time.Hour,
 		},
 		Security: SecurityConfig{
 			MaxFailedAttempts: maxFailedAttempts,

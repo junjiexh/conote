@@ -15,43 +15,45 @@ import (
 )
 
 type AuthService struct {
-	userRepo   *repository.UserRepository
-	jwtManager *jwt.JWTManager
-	config     *config.Config
+	userRepo    *repository.UserRepository
+	refreshRepo *repository.RefreshTokenRepository
+	jwtManager  *jwt.JWTManager
+	config      *config.Config
 }
 
-func NewAuthService(userRepo *repository.UserRepository, jwtManager *jwt.JWTManager, cfg *config.Config) *AuthService {
+func NewAuthService(userRepo *repository.UserRepository, refreshRepo *repository.RefreshTokenRepository, jwtManager *jwt.JWTManager, cfg *config.Config) *AuthService {
 	return &AuthService{
-		userRepo:   userRepo,
-		jwtManager: jwtManager,
-		config:     cfg,
+		userRepo:    userRepo,
+		refreshRepo: refreshRepo,
+		jwtManager:  jwtManager,
+		config:      cfg,
 	}
 }
 
-func (s *AuthService) Register(email, password string) (*models.User, string, error) {
+func (s *AuthService) Register(email, password string) (*models.User, string, string, error) {
 	// Validate email format
 	if !isValidEmail(email) {
-		return nil, "", fmt.Errorf("invalid email format")
+		return nil, "", "", fmt.Errorf("invalid email format")
 	}
 
 	// Validate password strength
 	if err := s.validatePassword(password); err != nil {
-		return nil, "", err
+		return nil, "", "", err
 	}
 
 	// Check if user already exists
 	exists, err := s.userRepo.EmailExists(email)
 	if err != nil {
-		return nil, "", fmt.Errorf("failed to check email existence: %w", err)
+		return nil, "", "", fmt.Errorf("failed to check email existence: %w", err)
 	}
 	if exists {
-		return nil, "", fmt.Errorf("email already registered")
+		return nil, "", "", fmt.Errorf("email already registered")
 	}
 
 	// Hash password
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
-		return nil, "", fmt.Errorf("failed to hash password: %w", err)
+		return nil, "", "", fmt.Errorf("failed to hash password: %w", err)
 	}
 
 	// Create user
@@ -62,29 +64,23 @@ func (s *AuthService) Register(email, password string) (*models.User, string, er
 	}
 
 	if err := s.userRepo.Create(user); err != nil {
-		return nil, "", fmt.Errorf("failed to create user: %w", err)
+		return nil, "", "", fmt.Errorf("failed to create user: %w", err)
 	}
 
-	// Generate JWT token
-	token, err := s.jwtManager.Generate(user)
-	if err != nil {
-		return nil, "", fmt.Errorf("failed to generate token: %w", err)
-	}
-
-	return user, token, nil
+	return s.issueTokens(user)
 }
 
-func (s *AuthService) Login(email, password string) (*models.User, string, error) {
+func (s *AuthService) Login(email, password string) (*models.User, string, string, error) {
 	// Find user by email
 	user, err := s.userRepo.FindByEmail(email)
 	if err != nil {
-		return nil, "", fmt.Errorf("invalid credentials")
+		return nil, "", "", fmt.Errorf("invalid credentials")
 	}
 
 	// Check if account is locked
 	if user.AccountLocked {
 		if user.LockedUntil != nil && time.Now().Before(*user.LockedUntil) {
-			return nil, "", fmt.Errorf("account is locked until %s", user.LockedUntil.Format(time.RFC3339))
+			return nil, "", "", fmt.Errorf("account is locked until %s", user.LockedUntil.Format(time.RFC3339))
 		}
 		// Unlock account if lockout period has passed
 		user.AccountLocked = false
@@ -102,30 +98,24 @@ func (s *AuthService) Login(email, password string) (*models.User, string, error
 		if user.FailedLoginAttempts >= s.config.Security.MaxFailedAttempts {
 			lockUntil := time.Now().Add(s.config.Security.LockoutDuration)
 			s.userRepo.LockAccount(user.ID, lockUntil)
-			return nil, "", fmt.Errorf("account locked due to too many failed login attempts")
+			return nil, "", "", fmt.Errorf("account locked due to too many failed login attempts")
 		}
 
-		return nil, "", fmt.Errorf("invalid credentials")
+		return nil, "", "", fmt.Errorf("invalid credentials")
 	}
 
 	// Update last login and reset failed attempts
 	if err := s.userRepo.UpdateLastLogin(user.ID); err != nil {
-		return nil, "", fmt.Errorf("failed to update login time: %w", err)
+		return nil, "", "", fmt.Errorf("failed to update login time: %w", err)
 	}
 
 	// Refresh user data
 	user, err = s.userRepo.FindByID(user.ID)
 	if err != nil {
-		return nil, "", fmt.Errorf("failed to refresh user data: %w", err)
+		return nil, "", "", fmt.Errorf("failed to refresh user data: %w", err)
 	}
 
-	// Generate JWT token
-	token, err := s.jwtManager.Generate(user)
-	if err != nil {
-		return nil, "", fmt.Errorf("failed to generate token: %w", err)
-	}
-
-	return user, token, nil
+	return s.issueTokens(user)
 }
 
 func (s *AuthService) ValidateToken(tokenString string) (*jwt.Claims, error) {
@@ -262,4 +252,57 @@ func (s *AuthService) validatePassword(password string) error {
 func isValidEmail(email string) bool {
 	emailRegex := regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`)
 	return emailRegex.MatchString(email)
+}
+
+func (s *AuthService) RefreshTokens(refreshToken string) (string, string, error) {
+	if refreshToken == "" {
+		return "", "", fmt.Errorf("refresh token is required")
+	}
+
+	existing, err := s.refreshRepo.FindValid(refreshToken)
+	if err != nil {
+		return "", "", err
+	}
+
+	user, err := s.userRepo.FindByID(existing.UserID)
+	if err != nil {
+		return "", "", fmt.Errorf("user not found")
+	}
+
+	accessToken, err := s.jwtManager.Generate(user)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to generate token: %w", err)
+	}
+
+	newRefreshToken := uuid.New().String()
+	expiresAt := time.Now().Add(s.config.JWT.RefreshExpiration)
+	if err := s.refreshRepo.Rotate(refreshToken, user.ID, newRefreshToken, expiresAt); err != nil {
+		return "", "", fmt.Errorf("failed to rotate refresh token: %w", err)
+	}
+
+	return accessToken, newRefreshToken, nil
+}
+
+func (s *AuthService) issueTokens(user *models.User) (*models.User, string, string, error) {
+	if err := s.refreshRepo.RevokeAllForUser(user.ID); err != nil {
+		return nil, "", "", fmt.Errorf("failed to revoke existing refresh tokens: %w", err)
+	}
+
+	accessToken, err := s.jwtManager.Generate(user)
+	if err != nil {
+		return nil, "", "", fmt.Errorf("failed to generate token: %w", err)
+	}
+
+	refreshToken := uuid.New().String()
+	expiresAt := time.Now().Add(s.config.JWT.RefreshExpiration)
+	token := &models.RefreshToken{
+		Token:     refreshToken,
+		UserID:    user.ID,
+		ExpiresAt: expiresAt,
+	}
+	if err := s.refreshRepo.Create(token); err != nil {
+		return nil, "", "", fmt.Errorf("failed to save refresh token: %w", err)
+	}
+
+	return user, accessToken, refreshToken, nil
 }

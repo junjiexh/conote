@@ -19,7 +19,7 @@ func NewAccountServer(authService *service.AuthService) *AccountServer {
 }
 
 func (s *AccountServer) Register(ctx context.Context, req *RegisterRequest) (*RegisterResponse, error) {
-	user, token, err := s.authService.Register(req.Email, req.Password)
+	user, token, _, err := s.authService.Register(req.Email, req.Password)
 	if err != nil {
 		return &RegisterResponse{
 			Success: false,
@@ -36,7 +36,7 @@ func (s *AccountServer) Register(ctx context.Context, req *RegisterRequest) (*Re
 }
 
 func (s *AccountServer) Login(ctx context.Context, req *LoginRequest) (*LoginResponse, error) {
-	user, token, err := s.authService.Login(req.Email, req.Password)
+	user, token, _, err := s.authService.Login(req.Email, req.Password)
 	if err != nil {
 		return &LoginResponse{
 			Success: false,

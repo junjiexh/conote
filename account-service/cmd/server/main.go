@@ -41,12 +41,13 @@ func main() {
 
 	// Initialize repositories
 	userRepo := repository.NewUserRepository(db)
+	refreshRepo := repository.NewRefreshTokenRepository(db)
 
 	// Initialize JWT manager
 	jwtManager := jwt.NewJWTManager(cfg.JWT.Secret, cfg.JWT.Expiration)
 
 	// Initialize services
-	authService := service.NewAuthService(userRepo, jwtManager, cfg)
+	authService := service.NewAuthService(userRepo, refreshRepo, jwtManager, cfg)
 
 	// Create gRPC server
 	grpcServer := grpc.NewServer()

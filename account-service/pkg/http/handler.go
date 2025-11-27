@@ -26,10 +26,11 @@ type AuthRequest struct {
 }
 
 type AuthResponse struct {
-	Success bool     `json:"success"`
-	Message string   `json:"message"`
-	Token   string   `json:"token,omitempty"`
-	User    *UserDTO `json:"user,omitempty"`
+	Success      bool     `json:"success"`
+	Message      string   `json:"message"`
+	Token        string   `json:"token,omitempty"`
+	RefreshToken string   `json:"refreshToken,omitempty"`
+	User         *UserDTO `json:"user,omitempty"`
 }
 
 type UserDTO struct {
@@ -50,6 +51,10 @@ type PasswordResetConfirmRequest struct {
 	NewPassword string `json:"newPassword"`
 }
 
+type RefreshTokenRequest struct {
+	RefreshToken string `json:"refreshToken"`
+}
+
 type MessageResponse struct {
 	Success bool   `json:"success"`
 	Message string `json:"message"`
@@ -63,17 +68,18 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, token, err := h.authService.Register(req.Email, req.Password)
+	user, token, refreshToken, err := h.authService.Register(req.Email, req.Password)
 	if err != nil {
 		respondWithError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	response := AuthResponse{
-		Success: true,
-		Message: "User registered successfully",
-		Token:   token,
-		User:    toUserDTO(user),
+		Success:      true,
+		Message:      "User registered successfully",
+		Token:        token,
+		RefreshToken: refreshToken,
+		User:         toUserDTO(user),
 	}
 
 	respondWithJSON(w, http.StatusCreated, response)
@@ -87,17 +93,18 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, token, err := h.authService.Login(req.Email, req.Password)
+	user, token, refreshToken, err := h.authService.Login(req.Email, req.Password)
 	if err != nil {
 		respondWithError(w, http.StatusUnauthorized, err.Error())
 		return
 	}
 
 	response := AuthResponse{
-		Success: true,
-		Message: "Login successful",
-		Token:   token,
-		User:    toUserDTO(user),
+		Success:      true,
+		Message:      "Login successful",
+		Token:        token,
+		RefreshToken: refreshToken,
+		User:         toUserDTO(user),
 	}
 
 	respondWithJSON(w, http.StatusOK, response)
@@ -147,6 +154,30 @@ func (h *Handler) ConfirmPasswordReset(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// Refresh issues a new access token using a refresh token
+func (h *Handler) Refresh(w http.ResponseWriter, r *http.Request) {
+	var req RefreshTokenRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid request payload")
+		return
+	}
+
+	token, refreshToken, err := h.authService.RefreshTokens(req.RefreshToken)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, err.Error())
+		return
+	}
+
+	response := AuthResponse{
+		Success:      true,
+		Message:      "Token refreshed",
+		Token:        token,
+		RefreshToken: refreshToken,
+	}
+
+	respondWithJSON(w, http.StatusOK, response)
+}
+
 // Helper functions
 func respondWithError(w http.ResponseWriter, code int, message string) {
 	respondWithJSON(w, code, MessageResponse{Success: false, Message: message})
@@ -186,6 +217,7 @@ func (h *Handler) SetupRoutes() *mux.Router {
 	// Auth routes
 	router.HandleFunc("/api/auth/register", h.Register).Methods("POST", "OPTIONS")
 	router.HandleFunc("/api/auth/login", h.Login).Methods("POST", "OPTIONS")
+	router.HandleFunc("/api/auth/refresh", h.Refresh).Methods("POST", "OPTIONS")
 	router.HandleFunc("/api/auth/password-reset/request", h.RequestPasswordReset).Methods("POST", "OPTIONS")
 	router.HandleFunc("/api/auth/password-reset/confirm", h.ConfirmPasswordReset).Methods("POST", "OPTIONS")
 
